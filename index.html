@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.9.1: alarma de choque de horario también en cards de la vista Sesiones (historial) -->
+<!-- V1.9.5: recordatorios — notificación del navegador + envío manual por correo al paciente (mailto, marca "Enviado") -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -184,6 +184,44 @@ button, input{font-family:'Inter',sans-serif;}
 .ses-card.conflict{border-color:var(--danger); box-shadow:0 0 0 1px var(--danger);}
 .empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
 
+/* ===== CHECK RÁPIDO "COMPLETADA" EN CARD (V1.9.4) ===== */
+.ses-check{flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--muted); font-size:18px; transition:color .15s, transform .1s;}
+.ses-check:hover{color:var(--pri); transform:scale(1.08);}
+.ses-check.checked{color:var(--pri);}
+.wk-check{position:absolute; top:6px; right:6px; width:18px; height:18px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--muted); font-size:14px;}
+.wk-check.checked{color:var(--pri);}
+.wk-card{position:relative; padding-right:24px;}
+
+/* ===== RECORDATORIOS (V1.9.5) ===== */
+#notif-toggle.on{color:var(--pri-on-sb);}
+.reminder-banner{
+  position:fixed; top:16px; right:16px; z-index:300; max-width:320px;
+  background:var(--crd); border:1px solid var(--pri); border-radius:10px; padding:12px 14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.15); display:flex; gap:10px; align-items:flex-start;
+  animation:slidein .2s ease;
+}
+@keyframes slidein{from{transform:translateX(20px); opacity:0;} to{transform:translateX(0); opacity:1;}}
+.reminder-banner i{color:var(--pri); font-size:18px; margin-top:1px;}
+.reminder-banner-title{font-size:12.5px; font-weight:600; color:var(--txt);}
+.reminder-banner-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.reminder-banner-close{margin-left:auto; cursor:pointer; color:var(--muted); font-size:14px;}
+
+.ses-remind-btn{font-size:10.5px; padding:3px 8px; border-radius:4px; font-weight:500; border:0.5px solid var(--brd);
+  background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; gap:4px;}
+.ses-remind-btn:hover{border-color:var(--pri); color:var(--pri);}
+.ses-remind-btn.sent{background:var(--pri-lt); color:var(--pri); border-color:transparent; cursor:default;}
+
+.rm-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:400; align-items:center; justify-content:center;}
+.rm-modal{background:var(--crd); border-radius:14px; padding:24px; width:100%; max-width:380px; margin:16px;}
+.rm-modal h3{font-size:15px; font-weight:600; color:var(--txt); margin-bottom:14px;}
+.rm-modal .login-field{margin-bottom:12px;}
+.rm-modal textarea{width:100%; min-height:90px; border-radius:8px; border:0.5px solid var(--brd); background:var(--pg);
+  color:var(--txt); padding:10px 12px; font-size:12.5px; font-family:'Inter',sans-serif; resize:vertical;}
+.rm-actions{display:flex; gap:8px; margin-top:16px;}
+.rm-actions button{flex:1;}
+
 /* ===== AGENDA: TABS DIA/SEMANA/MES (V1.9) ===== */
 .agenda-tabs{display:flex; gap:4px; margin-top:12px; background:var(--pg); border-radius:8px; padding:3px; width:fit-content;}
 .atab{font-size:12px; font-weight:500; color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; transition:all .15s;}
@@ -237,7 +275,10 @@ button, input{font-family:'Inter',sans-serif;}
 .timeline{position:relative; padding-left:2px;}
 .tl-item{position:relative; padding-bottom:14px; border-left:1.5px solid var(--brd); padding-left:16px; margin-left:4px;}
 .tl-item:last-child{border-left:1.5px solid transparent; padding-bottom:0;}
-.tl-dot{position:absolute; left:-5.5px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--pri);}
+.tl-dot{position:absolute; left:-5.5px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--warm);}
+.tl-dot.done{background:var(--done);}
+.tl-dot.active{background:var(--pri);}
+.tl-dot.upcoming{background:var(--warm);}
 .tl-dt{font-size:11px; color:var(--muted); font-weight:500;}
 .tl-nt{font-size:12px; color:var(--txt); margin-top:3px; line-height:1.5;}
 
@@ -437,7 +478,10 @@ button, input{font-family:'Inter',sans-serif;}
           <div class="aname">PsicoGestión</div>
           <div class="asub">Consultorio privado</div>
         </div>
-        <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+        <div style="display:flex; gap:6px;">
+          <button class="theme-toggle" id="notif-toggle" aria-label="Activar recordatorios" title="Activar recordatorios del navegador"><i class="ti ti-bell"></i></button>
+          <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+        </div>
       </div>
       <div class="sb-nav">
         <div class="nav-item active" data-view="agenda"><i class="ti ti-calendar-event"></i>Agenda</div>
@@ -509,10 +553,13 @@ button, input{font-family:'Inter',sans-serif;}
           <div class="pf-back" id="pf-back"><i class="ti ti-arrow-left"></i>Volver a la agenda</div>
           <div class="pf-hrow">
             <div class="pf-av" id="pf-av">--</div>
-            <div>
+            <div style="flex:1;">
               <div class="pf-nm" id="pf-nm">—</div>
               <div class="pf-sub" id="pf-sub">—</div>
             </div>
+            <button class="theme-toggle" id="pf-export-btn" style="color:var(--muted); border-color:var(--brd); width:auto; padding:0 12px; gap:6px;">
+              <i class="ti ti-printer"></i>Exportar historia
+            </button>
           </div>
           <div class="pf-grid">
             <div>
@@ -740,6 +787,25 @@ button, input{font-family:'Inter',sans-serif;}
 
 <div id="toast-container"></div>
 
+<div class="rm-overlay" id="rm-overlay">
+  <div class="rm-modal">
+    <h3>Enviar recordatorio</h3>
+    <div class="login-field">
+      <label>Correo del paciente</label>
+      <input type="email" id="rm-email" placeholder="paciente@correo.com">
+    </div>
+    <div class="login-field">
+      <label>Mensaje</label>
+      <textarea id="rm-mensaje"></textarea>
+    </div>
+    <div class="login-err" id="rm-err"></div>
+    <div class="rm-actions">
+      <button class="login-btn" style="background:var(--crd); color:var(--txt); border:0.5px solid var(--brd);" id="rm-cancel">Cancelar</button>
+      <button class="login-btn" id="rm-enviar">Abrir correo para enviar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
@@ -957,6 +1023,8 @@ function startListeners(){
     // Refresca semana/mes si están visibles (V1.9)
     if(document.getElementById('agenda-sub-semana').classList.contains('active')) renderWeekView();
     if(document.getElementById('agenda-sub-mes').classList.contains('active')) renderMonthView();
+    // Refresca la ficha abierta si hay una (V1.9.3, timeline completa)
+    if(fichaActualId && document.getElementById('view-ficha').classList.contains('active')) openFicha(fichaActualId);
   }, (err) => {
     console.error('Error cargando historial de sesiones:', err);
     document.getElementById('sesiones-list').innerHTML = '<div class="empty-state">Error al cargar el historial.</div>';
@@ -1048,6 +1116,147 @@ function detectarChoques(lista){
   return conflictIds;
 }
 
+/* ===== RECORDATORIOS (V1.9.5) =====
+   Dos partes independientes:
+   1) Modal para enviar recordatorio manual al paciente por correo (abre el cliente de correo del
+      profesional vía mailto:, el envío real lo hace el/la psicólogo/a desde ahí — no es automático).
+   2) Notificación del navegador cuando una sesión está por comenzar, mientras la app está abierta. */
+
+/* ----- 1) Modal de recordatorio manual ----- */
+const rmOverlay = document.getElementById('rm-overlay');
+let rmSesionId = null;
+
+function abrirModalRecordatorio(sid, pid){
+  const sesion = sesionesCache.find(s => s.id === sid) || todasSesionesCache.find(s => s.id === sid);
+  const paciente = pacientesCache[pid] || {};
+  if(!sesion){ showToast('No encontramos esa sesión.', 'err'); return; }
+  rmSesionId = sid;
+  document.getElementById('rm-err').textContent = '';
+  document.getElementById('rm-email').value = paciente.email || '';
+  document.getElementById('rm-mensaje').value =
+`Hola ${paciente.nombre || ''},
+
+Te escribo para recordarte tu sesión programada para el ${sesion.fechaStr || 'próximo día'} a las ${sesion.hora || '--:--'} (${sesion.modalidad || 'presencial'}).
+
+Cualquier cosa me avisas.
+
+${NOMBRE_CONSULTORIO}`;
+  rmOverlay.style.display = 'flex';
+}
+function cerrarModalRecordatorio(){
+  rmOverlay.style.display = 'none';
+  rmSesionId = null;
+}
+document.getElementById('rm-cancel').addEventListener('click', cerrarModalRecordatorio);
+
+document.getElementById('rm-enviar').addEventListener('click', async () => {
+  const email = document.getElementById('rm-email').value.trim();
+  const errEl = document.getElementById('rm-err');
+  errEl.textContent = '';
+  if(!email){ errEl.textContent = 'Escribe el correo del paciente.'; return; }
+  if(!rmSesionId) return;
+
+  const mensaje = document.getElementById('rm-mensaje').value;
+  const asunto = encodeURIComponent('Recordatorio de tu próxima sesión');
+  const cuerpo = encodeURIComponent(mensaje);
+  window.open(`mailto:${email}?subject=${asunto}&body=${cuerpo}`, '_blank');
+
+  try{
+    await updateDoc(doc(db, 'sesiones', rmSesionId), {
+      recordatorioEnviado: true,
+      recordatorioFecha: new Date().toISOString(),
+      recordatorioEmail: email
+    });
+    showToast('Se abrió tu correo. Marcado como enviado.', 'ok');
+  } catch(err){
+    console.error('Error marcando recordatorio como enviado:', err);
+    showToast('Se abrió tu correo, pero no pudimos guardar el estado.', 'warn');
+  }
+  cerrarModalRecordatorio();
+});
+
+/* ----- 2) Notificaciones del navegador (mientras la app está abierta) ----- */
+const NOTIF_MINUTOS_ANTES = 15;
+let notifActivas = localStorage.getItem('psicogestion_notif_v1') === 'on';
+const notifYaAvisadas = new Set();
+
+function applyNotifIcon(){
+  document.getElementById('notif-toggle').classList.toggle('on', notifActivas);
+}
+applyNotifIcon();
+
+document.getElementById('notif-toggle').addEventListener('click', async () => {
+  if(!('Notification' in window)){
+    showToast('Tu navegador no soporta notificaciones.', 'warn');
+    return;
+  }
+  if(!notifActivas){
+    const permiso = await Notification.requestPermission();
+    if(permiso !== 'granted'){
+      showToast('No se activaron: permiso denegado en el navegador.', 'warn');
+      return;
+    }
+    notifActivas = true;
+    showToast('Recordatorios del navegador activados.', 'ok');
+  } else {
+    notifActivas = false;
+    showToast('Recordatorios del navegador desactivados.', 'ok');
+  }
+  localStorage.setItem('psicogestion_notif_v1', notifActivas ? 'on' : 'off');
+  applyNotifIcon();
+});
+
+function mostrarBannerRecordatorio(sesion, paciente){
+  const cont = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'reminder-banner';
+  el.innerHTML = `
+    <i class="ti ti-clock"></i>
+    <div>
+      <div class="reminder-banner-title">Sesión en ${NOTIF_MINUTOS_ANTES} min</div>
+      <div class="reminder-banner-sub">${paciente.nombre || 'Paciente'} · ${sesion.hora || '--:--'}</div>
+    </div>
+    <i class="ti ti-x reminder-banner-close"></i>`;
+  cont.appendChild(el);
+  el.querySelector('.reminder-banner-close').addEventListener('click', () => el.remove());
+  setTimeout(() => el.remove(), 15000);
+}
+
+function revisarRecordatoriosNavegador(){
+  if(!notifActivas) return;
+  const ahora = new Date();
+  const ahoraMin = ahora.getHours()*60 + ahora.getMinutes();
+  sesionesCache.forEach(s => {
+    if(s.estado === 'done' || notifYaAvisadas.has(s.id)) return;
+    const horaMin = horaAMinutos(s.hora);
+    if(horaMin === null) return;
+    const diferencia = horaMin - ahoraMin;
+    if(diferencia >= 0 && diferencia <= NOTIF_MINUTOS_ANTES){
+      notifYaAvisadas.add(s.id);
+      const paciente = pacientesCache[s.pacienteId] || {};
+      mostrarBannerRecordatorio(s, paciente);
+      if(Notification.permission === 'granted'){
+        new Notification('Sesión próxima', {
+          body: `${paciente.nombre || 'Paciente'} en ${diferencia} min (${s.hora})`,
+          icon: undefined
+        });
+      }
+    }
+  });
+}
+setInterval(revisarRecordatoriosNavegador, 60000);
+
+/* ===== MARCAR COMPLETADA RÁPIDA DESDE LA CARD (V1.9.4) ===== */
+async function toggleEstadoSesion(sid, estadoActual){
+  const nuevoEstado = estadoActual === 'done' ? 'upcoming' : 'done';
+  try{
+    await updateDoc(doc(db, 'sesiones', sid), { estado: nuevoEstado });
+  } catch(err){
+    console.error('Error actualizando estado de sesión:', err);
+    showToast('No pudimos actualizar la sesión. Intenta de nuevo.', 'err');
+  }
+}
+
 function renderSessions(){
   const listEl = document.getElementById('sessions-list');
   if(sesionesCache.length === 0){
@@ -1059,6 +1268,7 @@ function renderSessions(){
   listEl.innerHTML = sesionesCache.map(s => {
     const paciente = pacientesCache[s.pacienteId] || {};
     const enChoque = choques.has(s.id);
+    const completada = s.estado === 'done';
     return `<div class="ses-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''}" data-pid="${s.pacienteId}">
       <div class="tcol">
         <div class="thr">${s.hora || '--:--'}</div>
@@ -1068,12 +1278,32 @@ function renderSessions(){
       <div class="sinfo">
         <div class="snm">${paciente.nombre || 'Paciente'}</div>
         <div class="stype">${paciente.tipoTerapia || ''}</div>
-        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:10px;margin-right:3px"></i>Choque</span>':''}</div>
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:10px;margin-right:3px"></i>Choque</span>':''}
+          <button class="ses-remind-btn ${s.recordatorioEnviado?'sent':''}" data-sid="${s.id}" data-pid="${s.pacienteId}">
+            <i class="ti ${s.recordatorioEnviado?'ti-circle-check':'ti-mail'}"></i>${s.recordatorioEnviado?'Enviado':'Recordatorio'}
+          </button>
+        </div>
+      </div>
+      <div class="ses-check ${completada?'checked':''}" data-sid="${s.id}" data-estado="${s.estado||'upcoming'}" title="${completada?'Marcar como pendiente':'Marcar como completada'}">
+        <i class="ti ${completada?'ti-circle-check-filled':'ti-circle'}"></i>
       </div>
     </div>`;
   }).join('');
   listEl.querySelectorAll('.ses-card').forEach(el => {
     el.addEventListener('click', () => openFicha(el.dataset.pid));
+  });
+  listEl.querySelectorAll('.ses-check').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleEstadoSesion(el.dataset.sid, el.dataset.estado);
+    });
+  });
+  listEl.querySelectorAll('.ses-remind-btn').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(el.classList.contains('sent')) return;
+      abrirModalRecordatorio(el.dataset.sid, el.dataset.pid);
+    });
   });
   updateStats(sesionesCache);
 }
@@ -1135,7 +1365,11 @@ function renderWeekView(){
       ? delDia.map(s => {
           const paciente = pacientesCache[s.pacienteId] || {};
           const enChoque = choques.has(s.id);
+          const completada = s.estado === 'done';
           return `<div class="wk-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''}" data-pid="${s.pacienteId}">
+            <div class="wk-check ${completada?'checked':''}" data-sid="${s.id}" data-estado="${s.estado||'upcoming'}" title="${completada?'Marcar como pendiente':'Marcar como completada'}">
+              <i class="ti ${completada?'ti-circle-check-filled':'ti-circle'}"></i>
+            </div>
             <div class="wk-hora">${s.hora||'--:--'}${enChoque?' <i class="ti ti-alert-triangle" style="color:var(--danger);font-size:10px"></i>':''}</div>
             <div class="wk-nm">${paciente.nombre || 'Paciente'}</div>
           </div>`;
@@ -1149,6 +1383,12 @@ function renderWeekView(){
 
   gridEl.querySelectorAll('.wk-card').forEach(el => {
     el.addEventListener('click', () => openFicha(el.dataset.pid));
+  });
+  gridEl.querySelectorAll('.wk-check').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleEstadoSesion(el.dataset.sid, el.dataset.estado);
+    });
   });
 }
 
@@ -1362,6 +1602,7 @@ async function eliminarSesion(sid){
 function openFicha(pid){
   const p = pacientesCache[pid];
   if(!p) return;
+  fichaActualId = pid;
   document.getElementById('pf-av').textContent = p.iniciales || '??';
   document.getElementById('pf-av').style.background = p.colorAv || '#4A7B6F';
   document.getElementById('pf-nm').textContent = p.nombre || 'Paciente';
@@ -1370,15 +1611,17 @@ function openFicha(pid){
   document.getElementById('pf-phone').textContent = p.telefono || '—';
   document.getElementById('pf-motivo').textContent = p.motivoConsulta || 'Sin información registrada.';
 
-  const sesionesPaciente = sesionesCache.filter(s => s.pacienteId === pid);
+  const sesionesPaciente = todasSesionesCache
+    .filter(s => s.pacienteId === pid)
+    .sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||'') || (b.hora||'').localeCompare(a.hora||'')); // más reciente primero
   const tlEl = document.getElementById('pf-timeline');
   if(sesionesPaciente.length === 0){
     tlEl.innerHTML = '<div class="empty-state">Sin sesiones registradas aún.</div>';
   } else {
     tlEl.innerHTML = sesionesPaciente.map(s => `
       <div class="tl-item">
-        <div class="tl-dot"></div>
-        <div class="tl-dt">${s.hora || ''} · Sesión ${s.numeroSesion || '-'}</div>
+        <div class="tl-dot ${s.estado || 'upcoming'}"></div>
+        <div class="tl-dt">${s.fechaStr || ''} · ${s.hora || ''} · Sesión ${s.numeroSesion || '-'}</div>
         <div class="tl-nt">${s.nota || 'Sin notas registradas.'}</div>
       </div>`).join('');
   }
@@ -1534,20 +1777,20 @@ function closeConfirmDelete(){
 }
 document.getElementById('confirm-cancel').addEventListener('click', closeConfirmDelete);
 
-document.getElementById('confirm-export').addEventListener('click', () => {
-  if(!deleteTargetId) return;
-  const p = pacientesCache[deleteTargetId] || {};
+/* ===== GENERADOR DE PDF DE HISTORIA DE PACIENTE (reutilizable) =====
+   Usado por: exportar antes de eliminar (confirm-export) y botón "Exportar historia" en la ficha (V1.9.1) */
+function generarYAbrirHistoriaPDF(p, sesiones, subtitulo){
   const fecha = new Date().toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
   const colorAcento = '#4A7B6F';
 
   let filasSesiones = '';
-  if(deleteTargetSessions.length === 0){
+  if(sesiones.length === 0){
     filasSesiones = `<tr><td colspan="3" style="padding:14px;text-align:center;color:#94a3b8;">Sin sesiones registradas.</td></tr>`;
   } else {
-    deleteTargetSessions.forEach(s => {
+    sesiones.forEach(s => {
       filasSesiones += `<tr>
         <td style="padding:10px;border-bottom:1px solid #e2e8f0;">Sesión ${s.numeroSesion || '-'}</td>
-        <td style="padding:10px;border-bottom:1px solid #e2e8f0;">${s.hora || '--:--'} · ${s.modalidad || '—'}</td>
+        <td style="padding:10px;border-bottom:1px solid #e2e8f0;">${s.fechaStr || ''} ${s.hora || '--:--'} · ${s.modalidad || '—'}</td>
         <td style="padding:10px;border-bottom:1px solid #e2e8f0;">${s.nota || 'Sin notas registradas.'}</td>
       </tr>`;
     });
@@ -1565,7 +1808,7 @@ document.getElementById('confirm-export').addEventListener('click', () => {
   </style></head><body>
   <button class="no-print" onclick="window.print()" style="padding:12px;background:${colorAcento};color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-bottom:20px;width:100%;">🖨️ Imprimir / Guardar como PDF</button>
   <div class="header">
-    <div><h1 style="margin:0;letter-spacing:1px;">${NOMBRE_CONSULTORIO}</h1><div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;">FICHA DE PACIENTE — RESPALDO</div></div>
+    <div><h1 style="margin:0;letter-spacing:1px;">${NOMBRE_CONSULTORIO}</h1><div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;">${subtitulo}</div></div>
     <div style="text-align:right;font-size:0.9rem;"><strong>Fecha de exportación:</strong><br>${fecha}</div>
   </div>
   <div class="info-grid">
@@ -1585,12 +1828,42 @@ document.getElementById('confirm-export').addEventListener('click', () => {
     <span style="font-size:0.95rem;">${p.motivoConsulta || 'Sin información registrada.'}</span>
   </div>
   <table><thead><tr><th>Sesión</th><th>Fecha / Modalidad</th><th>Nota</th></tr></thead><tbody>${filasSesiones}</tbody></table>
-  <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión — respaldo previo a eliminación.</p>
+  <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión.</p>
   </body></html>`;
 
   const win = window.open('', '_blank', 'width=900,height=800');
   win.document.write(html);
   win.document.close();
+}
+
+document.getElementById('confirm-export').addEventListener('click', () => {
+  if(!deleteTargetId) return;
+  const p = pacientesCache[deleteTargetId] || {};
+  generarYAbrirHistoriaPDF(p, deleteTargetSessions, 'FICHA DE PACIENTE — RESPALDO');
+});
+
+/* ===== EXPORTAR HISTORIA DESDE LA FICHA (V1.9.1) ===== */
+let fichaActualId = null;
+document.getElementById('pf-export-btn').addEventListener('click', async () => {
+  if(!fichaActualId) return;
+  const p = pacientesCache[fichaActualId];
+  if(!p) return;
+  const btn = document.getElementById('pf-export-btn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Generando...';
+  try{
+    const q = query(collection(db, 'sesiones'), where('pacienteId', '==', fichaActualId));
+    const snap = await getDocs(q);
+    const sesionesPaciente = [];
+    snap.forEach(d => sesionesPaciente.push({ id: d.id, ...d.data() }));
+    sesionesPaciente.sort((a,b) => (a.fechaStr||'').localeCompare(b.fechaStr||'') || (a.hora||'').localeCompare(b.hora||''));
+    generarYAbrirHistoriaPDF(p, sesionesPaciente, 'FICHA DE PACIENTE — HISTORIA');
+  } catch(err){
+    console.error('Error exportando historia del paciente:', err);
+    showToast('No pudimos generar la exportación. Intenta de nuevo.', 'err');
+  } finally {
+    btn.innerHTML = original;
+  }
 });
 
 /* ===== REPORTES (V1.7) ===== */
