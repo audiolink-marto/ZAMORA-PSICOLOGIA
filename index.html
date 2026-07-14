@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.7 -->
+<!-- V1.8 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -261,6 +261,51 @@ button, input{font-family:'Inter',sans-serif;}
 .pf-del-btn{color:var(--danger) !important; border-color:var(--danger-lt) !important;}
 .pf-del-btn:hover{background:var(--danger-lt) !important;}
 
+/* ===== RECUPERAR CONTRASEÑA (V1.8) ===== */
+.login-fpwd{font-size:11.5px; color:var(--pri); text-align:center; margin-top:12px; cursor:pointer;}
+.login-fpwd:hover{text-decoration:underline;}
+.login-ok{font-size:12px; color:var(--pri); margin-top:10px; text-align:center; min-height:16px;}
+
+/* ===== BUSCADOR PACIENTES (V1.8) ===== */
+.sb-search{padding:0 8px 8px;}
+.sb-search input{
+  width:100%; height:32px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.05); color:#fff; padding:0 10px; font-size:11.5px; outline:none;
+  font-family:'Inter',sans-serif;
+}
+.sb-search input::placeholder{color:var(--sb-txt-dim);}
+.sb-search input:focus{border-color:var(--pri);}
+.pac-search{margin:0 0 14px;}
+.pac-search input{
+  width:100%; height:38px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--crd); color:var(--txt); padding:0 12px 0 34px; font-size:13px; outline:none;
+  font-family:'Inter',sans-serif;
+}
+.pac-search input:focus{border-color:var(--pri);}
+.pac-search-wrap{position:relative;}
+.pac-search-wrap i{position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:15px;}
+
+/* ===== TOAST (V1.8) ===== */
+#toast-container{
+  position:fixed; bottom:18px; right:18px; z-index:100;
+  display:flex; flex-direction:column; gap:8px; align-items:flex-end;
+}
+.toast{
+  background:var(--sb); color:#fff; font-size:12.5px; padding:11px 16px;
+  border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2);
+  display:flex; align-items:center; gap:8px; max-width:300px;
+  opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease;
+}
+.toast.show{opacity:1; transform:translateY(0);}
+.toast i{font-size:15px; flex-shrink:0;}
+.toast.t-ok i{color:var(--pri-on-sb);}
+.toast.t-warn i{color:var(--warm);}
+.toast.t-err i{color:var(--danger);}
+@media (max-width:768px){
+  #toast-container{bottom:70px; left:12px; right:12px; align-items:center;}
+  .toast{max-width:100%; width:100%;}
+}
+
 /* ===== MOBILE TOPBAR & BOTTOM NAV (V1.2) ===== */
 .mobile-topbar{display:none;}
 .mobile-bottomnav{display:none;}
@@ -310,6 +355,26 @@ button, input{font-family:'Inter',sans-serif;}
     </div>
     <button class="login-btn" id="login-btn">Iniciar sesión</button>
     <div class="login-err" id="login-err"></div>
+    <div class="login-fpwd" id="open-reset-modal">¿Olvidaste tu contraseña?</div>
+  </div>
+</div>
+
+<!-- MODAL: RECUPERAR CONTRASEÑA -->
+<div id="reset-modal-overlay" style="display:none; position:relative; z-index:70;">
+  <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="width:100%; max-width:360px; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="font-size:15px; font-weight:600;">Recuperar contraseña</div>
+        <span style="cursor:pointer; color:var(--muted); font-size:16px;" id="reset-modal-close"><i class="ti ti-x"></i></span>
+      </div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:14px;">
+        Escribe tu correo y te enviaremos un enlace para restablecer tu contraseña.
+      </div>
+      <div class="login-field"><label>Correo</label><input type="email" id="reset-email" placeholder="nombre@correo.com"></div>
+      <div class="login-err" id="reset-err"></div>
+      <div class="login-ok" id="reset-ok"></div>
+      <button class="login-btn" id="reset-send-btn">Enviar enlace</button>
+    </div>
   </div>
 </div>
 
@@ -339,6 +404,7 @@ button, input{font-family:'Inter',sans-serif;}
       </div>
       <div class="sb-pts">
         <div class="sb-lbl">Pacientes activos</div>
+        <div class="sb-search"><input type="text" id="sb-buscador" placeholder="Buscar paciente..."></div>
         <div id="sb-pacientes-list"><div class="pt-empty">Cargando...</div></div>
       </div>
       <div class="sb-prof">
@@ -413,6 +479,12 @@ button, input{font-family:'Inter',sans-serif;}
           <button class="login-btn" id="btn-nuevo-paciente" style="width:auto; padding:0 16px; height:36px; margin-top:0;">
             <i class="ti ti-plus" style="font-size:14px; vertical-align:-2px; margin-right:5px;"></i>Nuevo paciente
           </button>
+        </div>
+        <div class="mhdr" style="border-bottom:none; padding-top:0;">
+          <div class="pac-search pac-search-wrap">
+            <i class="ti ti-search"></i>
+            <input type="text" id="pac-buscador" placeholder="Buscar por nombre, iniciales o tipo de terapia...">
+          </div>
         </div>
         <div class="sessions" id="pacientes-grid">
           <div class="empty-state">Cargando pacientes...</div>
@@ -597,10 +669,12 @@ button, input{font-family:'Inter',sans-serif;}
   </div>
 </div>
 
+<div id="toast-container"></div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs,
@@ -684,6 +758,48 @@ function doLogin(){
     });
 }
 
+/* ===== TOAST (V1.8) ===== */
+function showToast(msg, tipo){
+  tipo = tipo || 'ok';
+  const cont = document.getElementById('toast-container');
+  if(!cont) return;
+  const icon = tipo === 'ok' ? 'ti-circle-check' : (tipo === 'warn' ? 'ti-alert-triangle' : 'ti-alert-circle');
+  const el = document.createElement('div');
+  el.className = `toast t-${tipo}`;
+  el.innerHTML = `<i class="ti ${icon}"></i><span>${msg}</span>`;
+  cont.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 3200);
+}
+
+/* ===== RECUPERAR CONTRASEÑA (V1.8) ===== */
+const resetOverlay = document.getElementById('reset-modal-overlay');
+function openResetModal(){
+  document.getElementById('reset-err').textContent = '';
+  document.getElementById('reset-ok').textContent = '';
+  document.getElementById('reset-email').value = document.getElementById('login-email').value.trim();
+  resetOverlay.style.display = 'block';
+}
+function closeResetModal(){ resetOverlay.style.display = 'none'; }
+document.getElementById('open-reset-modal').addEventListener('click', openResetModal);
+document.getElementById('reset-modal-close').addEventListener('click', closeResetModal);
+document.getElementById('reset-send-btn').addEventListener('click', () => {
+  const errEl = document.getElementById('reset-err');
+  const okEl = document.getElementById('reset-ok');
+  errEl.textContent = ''; okEl.textContent = '';
+  const email = document.getElementById('reset-email').value.trim();
+  if(!email){ errEl.textContent = 'Escribe tu correo.'; return; }
+  sendPasswordResetEmail(auth, email)
+    .then(() => { okEl.textContent = 'Enlace enviado. Revisa tu correo.'; })
+    .catch(err => {
+      console.error(err);
+      errEl.textContent = 'No pudimos enviar el enlace. Verifica el correo.';
+    });
+});
+
 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 const logoutBtnM = document.getElementById('logout-btn-m');
 if(logoutBtnM) logoutBtnM.addEventListener('click', () => signOut(auth));
@@ -731,25 +847,8 @@ function startListeners(){
   const pacientesQ = query(collection(db, 'pacientes'), orderBy('nombre'));
   onSnapshot(pacientesQ, (snap) => {
     pacientesCache = {};
-    const listEl = document.getElementById('sb-pacientes-list');
-    if(snap.empty){
-      listEl.innerHTML = '<div class="pt-empty">Aún no hay pacientes registrados.</div>';
-      return;
-    }
-    let html = '';
-    snap.forEach(docSnap => {
-      const p = docSnap.data();
-      pacientesCache[docSnap.id] = p;
-      if(p.activo === false) return;
-      html += `<div class="pt-item" data-pid="${docSnap.id}">
-        <div class="pt-av" style="background:${p.colorAv || '#4A7B6F'}">${p.iniciales || '??'}</div>
-        <div><div class="pt-nm">${p.nombre || 'Sin nombre'}</div><div class="pt-tp">${p.tipoTerapia || ''}</div></div>
-      </div>`;
-    });
-    listEl.innerHTML = html || '<div class="pt-empty">Sin pacientes activos.</div>';
-    listEl.querySelectorAll('.pt-item').forEach(el => {
-      el.addEventListener('click', () => openFicha(el.dataset.pid));
-    });
+    snap.forEach(docSnap => { pacientesCache[docSnap.id] = docSnap.data(); });
+    renderSidebarPacientes();
     renderSessions(); // refresca por si ya llegaron sesiones antes que pacientes
     // Refresca la grilla de la vista Pacientes si está definida (evita que quede desactualizada)
     if(typeof renderPacientesGrid === 'function') renderPacientesGrid();
@@ -791,6 +890,35 @@ function startListeners(){
     document.getElementById('sesiones-list').innerHTML = '<div class="empty-state">Error al cargar el historial.</div>';
   });
 }
+
+/* ===== BUSCADOR SIDEBAR (V1.8) ===== */
+function renderSidebarPacientes(){
+  const listEl = document.getElementById('sb-pacientes-list');
+  const term = (document.getElementById('sb-buscador').value || '').trim().toLowerCase();
+  const ids = Object.keys(pacientesCache);
+  if(ids.length === 0){
+    listEl.innerHTML = '<div class="pt-empty">Aún no hay pacientes registrados.</div>';
+    return;
+  }
+  let html = '';
+  ids.forEach(id => {
+    const p = pacientesCache[id];
+    if(p.activo === false) return;
+    if(term){
+      const haystack = `${p.nombre||''} ${p.iniciales||''} ${p.tipoTerapia||''}`.toLowerCase();
+      if(!haystack.includes(term)) return;
+    }
+    html += `<div class="pt-item" data-pid="${id}">
+      <div class="pt-av" style="background:${p.colorAv || '#4A7B6F'}">${p.iniciales || '??'}</div>
+      <div><div class="pt-nm">${p.nombre || 'Sin nombre'}</div><div class="pt-tp">${p.tipoTerapia || ''}</div></div>
+    </div>`;
+  });
+  listEl.innerHTML = html || `<div class="pt-empty">${term ? 'Sin resultados.' : 'Sin pacientes activos.'}</div>`;
+  listEl.querySelectorAll('.pt-item').forEach(el => {
+    el.addEventListener('click', () => openFicha(el.dataset.pid));
+  });
+}
+document.getElementById('sb-buscador').addEventListener('input', renderSidebarPacientes);
 
 /* ===== RENDER AGENDA ===== */
 function bstat(s){
@@ -955,6 +1083,12 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
     estado: document.getElementById('sf-estado').value,
     nota: document.getElementById('sf-nota').value.trim()
   };
+
+  // Validación de choque de horario (V1.8): avisa pero no bloquea
+  const choque = todasSesionesCache.some(s =>
+    s.id !== sesionEditingId && s.fechaStr === fechaStr && s.hora === hora
+  );
+
   try{
     if(sesionEditingId){
       await updateDoc(doc(db, 'sesiones', sesionEditingId), data);
@@ -962,6 +1096,11 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
       await addDoc(collection(db, 'sesiones'), data);
     }
     closeSesionModal();
+    if(choque){
+      showToast('Guardada, pero ya hay otra sesión ese día a esa hora.', 'warn');
+    } else {
+      showToast(sesionEditingId ? 'Sesión actualizada.' : 'Sesión creada.', 'ok');
+    }
   } catch(err){
     console.error(err);
     errEl.textContent = 'No pudimos guardar. Intenta de nuevo.';
@@ -972,6 +1111,7 @@ async function eliminarSesion(sid){
   if(!confirm('¿Eliminar esta sesión de forma permanente? Esta acción no se puede deshacer.')) return;
   try{
     await deleteDoc(doc(db, 'sesiones', sid));
+    showToast('Sesión eliminada.', 'ok');
   } catch(err){
     console.error(err);
     alert('No pudimos eliminar la sesión. Intenta de nuevo.');
@@ -1010,9 +1150,21 @@ function openFicha(pid){
 /* ===== VISTA PACIENTES (grilla) ===== */
 function renderPacientesGrid(){
   const grid = document.getElementById('pacientes-grid');
-  const ids = Object.keys(pacientesCache);
+  const term = (document.getElementById('pac-buscador').value || '').trim().toLowerCase();
+  let ids = Object.keys(pacientesCache);
   if(ids.length === 0){
     grid.innerHTML = '<div class="empty-state">Aún no hay pacientes. Crea el primero con el botón "Nuevo paciente".</div>';
+    return;
+  }
+  if(term){
+    ids = ids.filter(id => {
+      const p = pacientesCache[id];
+      const haystack = `${p.nombre||''} ${p.iniciales||''} ${p.tipoTerapia||''}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }
+  if(ids.length === 0){
+    grid.innerHTML = '<div class="empty-state">Sin resultados para tu búsqueda.</div>';
     return;
   }
   grid.innerHTML = ids.map(id => {
@@ -1042,6 +1194,7 @@ function renderPacientesGrid(){
 // Envolvemos el listener de pacientes existente para que también refresque esta grilla
 const _origPacientesRenderHook = renderPacientesGrid;
 document.querySelector('.nav-item[data-view="pacientes"]').addEventListener('click', renderPacientesGrid);
+document.getElementById('pac-buscador').addEventListener('input', renderPacientesGrid);
 
 /* ===== MODAL NUEVO / EDITAR PACIENTE ===== */
 const modalOverlay = document.getElementById('modal-overlay');
@@ -1093,12 +1246,14 @@ document.getElementById('modal-save').addEventListener('click', async () => {
     activo: document.getElementById('f-activo').checked
   };
   try{
+    const wasEditing = !!editingId;
     if(editingId){
       await updateDoc(doc(db, 'pacientes', editingId), data);
     } else {
       await addDoc(collection(db, 'pacientes'), data);
     }
     closeModal();
+    showToast(wasEditing ? 'Paciente actualizado.' : 'Paciente creado.', 'ok');
   } catch(err){
     console.error(err);
     errEl.textContent = 'No pudimos guardar. Intenta de nuevo.';
@@ -1442,6 +1597,7 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async ()
     showView('view-agenda');
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('.nav-item[data-view="agenda"]').forEach(i => i.classList.add('active'));
+    showToast('Paciente eliminado.', 'ok');
   } catch(err){
     console.error(err);
     errEl.textContent = 'No pudimos eliminar. Intenta de nuevo.';
