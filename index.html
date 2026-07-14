@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsicoGestión — Consultorio</title>
+<!-- V1.0 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+
+<script>
+/* ===== ANTI-FLASH THEME (IIFE) ===== */
+(function(){
+  var t = localStorage.getItem('psicogestion_theme_v1') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+
+<style>
+/* ============================================
+   PSICOGESTIÓN V1.0 — VARIABLES DE TEMA
+   ============================================ */
+:root,
+[data-theme="light"]{
+  --sb:#1A2332; --sb-txt:#A8B8C8; --sb-txt-dim:rgba(255,255,255,0.32);
+  --pri:#4A7B6F; --pri-lt:#E3EDE9; --pri-on-sb:#7EC8B0;
+  --warm:#B8874A; --warm-lt:#F5EAD8;
+  --pg:#EEE9E1; --crd:#FFFFFF;
+  --txt:#1A2332; --muted:#8B8E96;
+  --brd:#DDD9D1;
+  --done:#999BA2; --done-lt:#F1F0EE;
+  --virt-bg:#EEF2FB; --virt-txt:#5068B0;
+  --pres-bg:#FFF4E6; --pres-txt:#9A6830;
+  --danger:#B0503E; --danger-lt:#F5DED9;
+}
+[data-theme="dark"]{
+  --sb:#0F1512; --sb-txt:#8A9A93; --sb-txt-dim:rgba(255,255,255,0.26);
+  --pri:#5A9885; --pri-lt:#16221D; --pri-on-sb:#5A9885;
+  --warm:#C99A5B; --warm-lt:#241E13;
+  --pg:#161B19; --crd:#1D2320;
+  --txt:#EDEDE9; --muted:#8A9089;
+  --brd:#2C332F;
+  --done:#6B716C; --done-lt:#232723;
+  --virt-bg:#1B1F2C; --virt-txt:#8B9DE0;
+  --pres-bg:#241E13; --pres-txt:#C99A5B;
+  --danger:#D97B65; --danger-lt:#2A1B17;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--pg);
+  color:var(--txt);
+  transition:background .2s ease, color .2s ease;
+  -webkit-font-smoothing:antialiased;
+}
+button, input{font-family:'Inter',sans-serif;}
+
+/* ===== LOGIN ===== */
+#login-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--pg); padding:20px;
+}
+.login-card{
+  width:100%; max-width:360px; background:var(--crd);
+  border:0.5px solid var(--brd); border-radius:14px; padding:32px 28px;
+}
+.login-logo{font-size:19px; font-weight:700; color:var(--txt); text-align:center;}
+.login-sub{font-size:12.5px; color:var(--muted); text-align:center; margin-top:4px; margin-bottom:26px;}
+.login-field{margin-bottom:14px;}
+.login-field label{font-size:11.5px; color:var(--muted); display:block; margin-bottom:5px;}
+.login-field input{
+  width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:0 12px; font-size:13.5px; outline:none;
+}
+.login-field input:focus{border-color:var(--pri);}
+.login-btn{
+  width:100%; height:42px; border-radius:8px; border:none; background:var(--pri);
+  color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:6px;
+}
+.login-btn:hover{opacity:.9;}
+.login-err{font-size:12px; color:var(--danger); margin-top:10px; text-align:center; min-height:16px;}
+
+/* ===== APP SHELL ===== */
+#app-screen{display:none; height:100vh; overflow:hidden;}
+.app{display:flex; height:100%; width:100%;}
+
+/* Sidebar */
+.sb{width:230px; background:var(--sb); display:flex; flex-direction:column; flex-shrink:0;}
+.sb-logo{padding:20px 18px 14px; border-bottom:0.5px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:flex-start;}
+.sb-logo .aname{font-size:14.5px; font-weight:600; color:#fff;}
+.sb-logo .asub{font-size:10px; color:var(--sb-txt-dim); margin-top:2px;}
+.theme-toggle{
+  width:28px; height:28px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12);
+  background:transparent; color:var(--sb-txt); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0;
+}
+.theme-toggle:hover{background:rgba(255,255,255,0.06);}
+.sb-nav{padding:10px 8px;}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:7px;
+  cursor:pointer; color:var(--sb-txt); font-size:12.5px; transition:background .15s;
+}
+.nav-item:hover{background:rgba(255,255,255,0.05);}
+.nav-item.active{background:rgba(74,123,111,0.22); color:#fff;}
+.nav-item.active i{color:var(--pri-on-sb);}
+.nav-item i{font-size:16px; color:rgba(255,255,255,0.35); width:18px; text-align:center;}
+.sb-pts{padding:8px 8px; flex:1; overflow-y:auto;}
+.sb-lbl{font-size:10px; color:var(--sb-txt-dim); letter-spacing:.8px; text-transform:uppercase; padding:8px 8px 6px; font-weight:500;}
+.pt-item{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; transition:background .15s;}
+.pt-item:hover{background:rgba(255,255,255,0.05);}
+.pt-av{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; flex-shrink:0; color:#fff;}
+.pt-nm{font-size:12px; color:var(--sb-txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pt-tp{font-size:10px; color:var(--sb-txt-dim);}
+.pt-empty{font-size:11.5px; color:var(--sb-txt-dim); padding:6px 8px;}
+.sb-prof{padding:12px 14px; border-top:0.5px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:10px;}
+.prof-av{width:30px; height:30px; border-radius:50%; background:var(--pri); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0;}
+.prof-nm{font-size:12px; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px;}
+.prof-rl{font-size:10px; color:var(--sb-txt-dim); cursor:pointer;}
+.prof-rl:hover{color:var(--sb-txt);}
+
+/* Main */
+.main{flex:1; background:var(--pg); display:flex; flex-direction:column; overflow:hidden; min-width:0;}
+.view{display:none; height:100%; flex-direction:column; overflow:hidden;}
+.view.active{display:flex;}
+
+.mhdr{padding:16px 22px 10px; border-bottom:0.5px solid var(--brd); flex-shrink:0;}
+.mdate{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px;}
+.mtitle{font-size:18px; font-weight:600; color:var(--txt); margin-top:2px;}
+.stats-row{display:flex; gap:8px; margin-top:12px;}
+.scard{background:var(--crd); border:0.5px solid var(--brd); border-radius:8px; padding:9px 14px; flex:1;}
+.snum{font-size:18px; font-weight:600; color:var(--txt);}
+.slbl{font-size:10px; color:var(--muted); margin-top:1px;}
+
+.sessions{flex:1; overflow-y:auto; padding:14px 22px;}
+.ses-card{
+  background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:12px 14px;
+  margin-bottom:8px; cursor:pointer; transition:border-color .15s; display:flex; align-items:flex-start; gap:12px;
+}
+.ses-card:hover{border-color:var(--pri);}
+.ses-card.done{opacity:.6;}
+.tcol{text-align:center; flex-shrink:0; width:44px;}
+.thr{font-size:12.5px; font-weight:600; color:var(--txt); line-height:1;}
+.tdot{width:8px; height:8px; border-radius:50%; margin:6px auto;}
+.tdot.done{background:var(--done);}
+.tdot.active{background:var(--pri); animation:pdot 2s ease-in-out infinite;}
+.tdot.upcoming{background:var(--warm);}
+@keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(74,123,111,.4);}50%{box-shadow:0 0 0 5px rgba(74,123,111,0);}}
+.tdur{font-size:10px; color:var(--muted);}
+.sinfo{flex:1; min-width:0;}
+.snm{font-size:13.5px; font-weight:600; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.stype{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.sbadges{display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;}
+.badge{font-size:10.5px; padding:3px 7px; border-radius:4px; font-weight:500;}
+.b-done{background:var(--done-lt); color:var(--done);}
+.b-act{background:var(--pri-lt); color:var(--pri);}
+.b-up{background:var(--warm-lt); color:var(--warm);}
+.b-virt{background:var(--virt-bg); color:var(--virt-txt);}
+.b-pres{background:var(--pres-bg); color:var(--pres-txt);}
+.b-ses{background:var(--pg); color:var(--muted);}
+.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
+
+/* Ficha de paciente */
+.pf-body{flex:1; overflow-y:auto; padding:20px 22px;}
+.pf-back{font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:5px; margin-bottom:16px; cursor:pointer; width:fit-content;}
+.pf-back:hover{color:var(--txt);}
+.pf-hrow{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+.pf-av{width:52px; height:52px; border-radius:50%; background:var(--pri); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; flex-shrink:0;}
+.pf-nm{font-size:18px; font-weight:600; color:var(--txt);}
+.pf-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+.pf-grid{display:grid; grid-template-columns:1fr 1.5fr; gap:16px;}
+.card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
+.ctit{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:10px;}
+.field{margin-bottom:10px;}
+.field:last-child{margin-bottom:0;}
+.flbl{font-size:10.5px; color:var(--muted);}
+.fval{font-size:13px; color:var(--txt); margin-top:2px; line-height:1.5;}
+.timeline{position:relative; padding-left:2px;}
+.tl-item{position:relative; padding-bottom:14px; border-left:1.5px solid var(--brd); padding-left:16px; margin-left:4px;}
+.tl-item:last-child{border-left:1.5px solid transparent; padding-bottom:0;}
+.tl-dot{position:absolute; left:-5.5px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--pri);}
+.tl-dt{font-size:11px; color:var(--muted); font-weight:500;}
+.tl-nt{font-size:12px; color:var(--txt); margin-top:3px; line-height:1.5;}
+
+/* Placeholder para vistas futuras */
+.wip{flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; flex-direction:column; gap:8px;}
+.wip i{font-size:28px; opacity:.5;}
+
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">PsicoGestión</div>
+    <div class="login-sub">Acceso al consultorio</div>
+    <div class="login-field">
+      <label>Correo</label>
+      <input type="email" id="login-email" placeholder="nombre@correo.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="login-btn">Iniciar sesión</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-screen">
+  <div class="app">
+    <aside class="sb">
+      <div class="sb-logo">
+        <div>
+          <div class="aname">PsicoGestión</div>
+          <div class="asub">Consultorio privado</div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+      </div>
+      <div class="sb-nav">
+        <div class="nav-item active" data-view="agenda"><i class="ti ti-calendar-event"></i>Agenda</div>
+        <div class="nav-item" data-view="pacientes"><i class="ti ti-users"></i>Pacientes</div>
+        <div class="nav-item" data-view="sesiones"><i class="ti ti-notes"></i>Sesiones</div>
+        <div class="nav-item" data-view="reportes"><i class="ti ti-chart-bar"></i>Reportes</div>
+      </div>
+      <div class="sb-pts">
+        <div class="sb-lbl">Pacientes activos</div>
+        <div id="sb-pacientes-list"><div class="pt-empty">Cargando...</div></div>
+      </div>
+      <div class="sb-prof">
+        <div class="prof-av" id="prof-av">--</div>
+        <div>
+          <div class="prof-nm" id="prof-nm">Psicólogo/a</div>
+          <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- VISTA AGENDA -->
+      <section class="view active" id="view-agenda">
+        <div class="mhdr">
+          <div class="mdate" id="agenda-date"></div>
+          <div class="mtitle">Agenda de hoy</div>
+          <div class="stats-row">
+            <div class="scard"><div class="snum" id="st-total">0</div><div class="slbl">Sesiones</div></div>
+            <div class="scard"><div class="snum" id="st-active" style="color:var(--pri)">0</div><div class="slbl">En curso</div></div>
+            <div class="scard"><div class="snum" id="st-upcoming" style="color:var(--warm)">0</div><div class="slbl">Pendientes</div></div>
+            <div class="scard"><div class="snum" id="st-done" style="color:var(--done)">0</div><div class="slbl">Completadas</div></div>
+          </div>
+        </div>
+        <div class="sessions" id="sessions-list">
+          <div class="empty-state">Cargando sesiones...</div>
+        </div>
+      </section>
+
+      <!-- VISTA FICHA DE PACIENTE -->
+      <section class="view" id="view-ficha">
+        <div class="pf-body">
+          <div class="pf-back" id="pf-back"><i class="ti ti-arrow-left"></i>Volver a la agenda</div>
+          <div class="pf-hrow">
+            <div class="pf-av" id="pf-av">--</div>
+            <div>
+              <div class="pf-nm" id="pf-nm">—</div>
+              <div class="pf-sub" id="pf-sub">—</div>
+            </div>
+          </div>
+          <div class="pf-grid">
+            <div>
+              <div class="card">
+                <div class="ctit">Datos de contacto</div>
+                <div class="field"><div class="flbl">Correo</div><div class="fval" id="pf-email">—</div></div>
+                <div class="field"><div class="flbl">Teléfono</div><div class="fval" id="pf-phone">—</div></div>
+              </div>
+              <div class="card">
+                <div class="ctit">Motivo de consulta</div>
+                <div class="fval" id="pf-motivo">—</div>
+              </div>
+            </div>
+            <div>
+              <div class="card">
+                <div class="ctit">Línea de tiempo de sesiones</div>
+                <div class="timeline" id="pf-timeline">
+                  <div class="empty-state">Sin sesiones registradas aún.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTAS PENDIENTES (placeholders para futuras iteraciones) -->
+      <section class="view" id="view-pacientes">
+        <div class="wip"><i class="ti ti-users"></i>Vista de Pacientes — próxima iteración</div>
+      </section>
+      <section class="view" id="view-sesiones">
+        <div class="wip"><i class="ti ti-notes"></i>Vista de Sesiones — próxima iteración</div>
+      </section>
+      <section class="view" id="view-reportes">
+        <div class="wip"><i class="ti ti-chart-bar"></i>Vista de Reportes — próxima iteración</div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* ============================================
+   FIREBASE CONFIG — zamora-psicologia
+   ============================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyA3BpiEbWY7XUZskliM56ZGkpioSmjJbwA",
+  authDomain: "zamora-psicologia.firebaseapp.com",
+  projectId: "zamora-psicologia",
+  storageBucket: "zamora-psicologia.firebasestorage.app",
+  messagingSenderId: "1018710047961",
+  appId: "1:1018710047961:web:bc619e40b828d35347d2c8"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ============================================
+   ESTRUCTURA DE DATOS ESPERADA EN FIRESTORE
+   Colección "pacientes" — documentos con:
+     nombre (string), iniciales (string), colorAv (string hex),
+     tipoTerapia (string), email (string), telefono (string),
+     motivoConsulta (string), activo (bool)
+   Colección "sesiones" — documentos con:
+     pacienteId (string, ref a doc de pacientes),
+     fecha (timestamp), hora (string), duracion (string),
+     estado ("done" | "active" | "upcoming"),
+     modalidad ("virtual" | "presencial"),
+     numeroSesion (number), nota (string)
+   ============================================ */
+
+/* ===== THEME TOGGLE ===== */
+const themeToggle = document.getElementById('theme-toggle');
+function applyThemeIcon(){
+  const t = document.documentElement.getAttribute('data-theme');
+  themeToggle.innerHTML = t === 'dark' ? '<i class="ti ti-sun"></i>' : '<i class="ti ti-moon"></i>';
+}
+applyThemeIcon();
+themeToggle.addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('psicogestion_theme_v1', next);
+  applyThemeIcon();
+});
+
+/* ===== FECHA DE HOY ===== */
+document.getElementById('agenda-date').textContent =
+  new Date().toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+/* ===== LOGIN ===== */
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app-screen');
+const loginBtn = document.getElementById('login-btn');
+const loginErr = document.getElementById('login-err');
+
+loginBtn.addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  loginErr.textContent = '';
+  if(!email || !pass){ loginErr.textContent = 'Completa correo y contraseña.'; return; }
+  signInWithEmailAndPassword(auth, email, pass)
+    .catch(err => {
+      loginErr.textContent = 'No pudimos iniciar sesión. Verifica tus datos.';
+      console.error(err);
+    });
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+  if(user){
+    loginScreen.style.display = 'none';
+    appScreen.style.display = 'block';
+    document.getElementById('prof-nm').textContent = user.email;
+    document.getElementById('prof-av').textContent = (user.email||'??').slice(0,2).toUpperCase();
+    startListeners();
+  } else {
+    loginScreen.style.display = 'flex';
+    appScreen.style.display = 'none';
+  }
+});
+
+/* ===== NAVEGACIÓN ===== */
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    showView('view-' + item.dataset.view);
+  });
+});
+function showView(id){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+document.getElementById('pf-back').addEventListener('click', () => {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.querySelector('.nav-item[data-view="agenda"]').classList.add('active');
+  showView('view-agenda');
+});
+
+/* ===== DATOS EN MEMORIA ===== */
+let pacientesCache = {};   // id -> datos paciente
+let sesionesCache = [];    // array de sesiones de hoy
+
+/* ===== LISTENERS FIRESTORE ===== */
+function startListeners(){
+  // Pacientes
+  const pacientesQ = query(collection(db, 'pacientes'), orderBy('nombre'));
+  onSnapshot(pacientesQ, (snap) => {
+    pacientesCache = {};
+    const listEl = document.getElementById('sb-pacientes-list');
+    if(snap.empty){
+      listEl.innerHTML = '<div class="pt-empty">Aún no hay pacientes registrados.</div>';
+      return;
+    }
+    let html = '';
+    snap.forEach(docSnap => {
+      const p = docSnap.data();
+      pacientesCache[docSnap.id] = p;
+      if(p.activo === false) return;
+      html += `<div class="pt-item" data-pid="${docSnap.id}">
+        <div class="pt-av" style="background:${p.colorAv || '#4A7B6F'}">${p.iniciales || '??'}</div>
+        <div><div class="pt-nm">${p.nombre || 'Sin nombre'}</div><div class="pt-tp">${p.tipoTerapia || ''}</div></div>
+      </div>`;
+    });
+    listEl.innerHTML = html || '<div class="pt-empty">Sin pacientes activos.</div>';
+    listEl.querySelectorAll('.pt-item').forEach(el => {
+      el.addEventListener('click', () => openFicha(el.dataset.pid));
+    });
+    renderSessions(); // refresca por si ya llegaron sesiones antes que pacientes
+  }, (err) => {
+    console.error('Error cargando pacientes:', err);
+    document.getElementById('sb-pacientes-list').innerHTML = '<div class="pt-empty">Error al cargar pacientes.</div>';
+  });
+
+  // Sesiones de hoy
+  const todayStr = new Date().toISOString().slice(0,10);
+  const sesionesQ = query(collection(db, 'sesiones'), orderBy('hora'));
+  onSnapshot(sesionesQ, (snap) => {
+    sesionesCache = [];
+    snap.forEach(docSnap => {
+      const s = docSnap.data();
+      // Filtra por fecha de hoy si el campo "fechaStr" existe (formato YYYY-MM-DD)
+      if(!s.fechaStr || s.fechaStr === todayStr){
+        sesionesCache.push({ id: docSnap.id, ...s });
+      }
+    });
+    renderSessions();
+  }, (err) => {
+    console.error('Error cargando sesiones:', err);
+    document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error al cargar la agenda.</div>';
+  });
+}
+
+/* ===== RENDER AGENDA ===== */
+function bstat(s){
+  if(s==='done') return '<span class="badge b-done">Completada</span>';
+  if(s==='active') return '<span class="badge b-act">En curso</span>';
+  return '<span class="badge b-up">Próxima</span>';
+}
+function bmod(m){
+  return m==='virtual'
+    ? '<span class="badge b-virt"><i class="ti ti-video" style="font-size:10px;margin-right:3px"></i>Virtual</span>'
+    : '<span class="badge b-pres"><i class="ti ti-building" style="font-size:10px;margin-right:3px"></i>Presencial</span>';
+}
+
+function renderSessions(){
+  const listEl = document.getElementById('sessions-list');
+  if(sesionesCache.length === 0){
+    listEl.innerHTML = '<div class="empty-state">No hay sesiones programadas para hoy.</div>';
+    updateStats([]);
+    return;
+  }
+  listEl.innerHTML = sesionesCache.map(s => {
+    const paciente = pacientesCache[s.pacienteId] || {};
+    return `<div class="ses-card ${s.estado==='done'?'done':''}" data-pid="${s.pacienteId}">
+      <div class="tcol">
+        <div class="thr">${s.hora || '--:--'}</div>
+        <div class="tdot ${s.estado || 'upcoming'}"></div>
+        <div class="tdur">${s.duracion || ''}</div>
+      </div>
+      <div class="sinfo">
+        <div class="snm">${paciente.nombre || 'Paciente'}</div>
+        <div class="stype">${paciente.tipoTerapia || ''}</div>
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.ses-card').forEach(el => {
+    el.addEventListener('click', () => openFicha(el.dataset.pid));
+  });
+  updateStats(sesionesCache);
+}
+
+function updateStats(list){
+  document.getElementById('st-total').textContent = list.length;
+  document.getElementById('st-active').textContent = list.filter(s=>s.estado==='active').length;
+  document.getElementById('st-upcoming').textContent = list.filter(s=>s.estado==='upcoming').length;
+  document.getElementById('st-done').textContent = list.filter(s=>s.estado==='done').length;
+}
+
+/* ===== FICHA DE PACIENTE ===== */
+function openFicha(pid){
+  const p = pacientesCache[pid];
+  if(!p) return;
+  document.getElementById('pf-av').textContent = p.iniciales || '??';
+  document.getElementById('pf-av').style.background = p.colorAv || '#4A7B6F';
+  document.getElementById('pf-nm').textContent = p.nombre || 'Paciente';
+  document.getElementById('pf-sub').textContent = `${p.tipoTerapia || ''}`;
+  document.getElementById('pf-email').textContent = p.email || '—';
+  document.getElementById('pf-phone').textContent = p.telefono || '—';
+  document.getElementById('pf-motivo').textContent = p.motivoConsulta || 'Sin información registrada.';
+
+  const sesionesPaciente = sesionesCache.filter(s => s.pacienteId === pid);
+  const tlEl = document.getElementById('pf-timeline');
+  if(sesionesPaciente.length === 0){
+    tlEl.innerHTML = '<div class="empty-state">Sin sesiones registradas aún.</div>';
+  } else {
+    tlEl.innerHTML = sesionesPaciente.map(s => `
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-dt">${s.hora || ''} · Sesión ${s.numeroSesion || '-'}</div>
+        <div class="tl-nt">${s.nota || 'Sin notas registradas.'}</div>
+      </div>`).join('');
+  }
+
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  showView('view-ficha');
+}
+</script>
+</body>
+</html>
