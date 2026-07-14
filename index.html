@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.6 -->
+<!-- V1.7 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -211,6 +211,49 @@ button, input{font-family:'Inter',sans-serif;}
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
 
+/* ===== REPORTES (V1.7) ===== */
+.rep-body{flex:1; overflow-y:auto; padding:20px 22px;}
+.rep-hdr{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;}
+.rep-title{font-size:18px; font-weight:600; color:var(--txt);}
+.rep-sub{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:2px;}
+.rep-export-btn{
+  display:flex; align-items:center; gap:6px;
+  height:36px; padding:0 16px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--crd); color:var(--txt); font-size:12.5px; font-weight:500;
+  cursor:pointer; font-family:'Inter',sans-serif; transition:border-color .15s;
+}
+.rep-export-btn:hover{border-color:var(--pri); color:var(--pri);}
+.rep-cards{display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;}
+.rep-card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; flex:1; min-width:120px;}
+.rep-card-num{font-size:24px; font-weight:700; color:var(--txt); line-height:1;}
+.rep-card-lbl{font-size:10.5px; color:var(--muted); margin-top:4px;}
+.rep-card-accent{color:var(--pri);}
+.rep-card-warn{color:var(--warm);}
+.rep-card-done{color:var(--done);}
+.rep-section{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:16px 18px; margin-bottom:14px;}
+.rep-section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:14px;}
+.rep-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.rep-bar-row:last-child{margin-bottom:0;}
+.rep-bar-lbl{font-size:12px; color:var(--txt); width:100px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rep-bar-track{flex:1; background:var(--pg); border-radius:4px; height:10px; overflow:hidden;}
+.rep-bar-fill{height:100%; border-radius:4px; background:var(--pri); transition:width .4s ease;}
+.rep-bar-fill.warm{background:var(--warm);}
+.rep-bar-fill.done{background:var(--done);}
+.rep-bar-val{font-size:11.5px; color:var(--muted); width:28px; text-align:right; flex-shrink:0;}
+.rep-mod-row{display:flex; gap:14px; align-items:center;}
+.rep-mod-bar{flex:1; height:14px; border-radius:7px; overflow:hidden; display:flex;}
+.rep-mod-virt{background:var(--virt-txt); height:100%; transition:width .4s ease;}
+.rep-mod-pres{background:var(--warm); height:100%; transition:width .4s ease;}
+.rep-mod-legend{display:flex; gap:16px; margin-top:10px;}
+.rep-mod-dot{width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:2px;}
+.rep-mod-item{display:flex; align-items:flex-start; gap:6px; font-size:12px; color:var(--txt);}
+.rep-empty{font-size:12.5px; color:var(--muted); text-align:center; padding:20px 0;}
+@media (max-width:768px){
+  .rep-body{padding:12px 16px;}
+  .rep-cards{gap:6px;}
+  .rep-card{min-width:calc(50% - 3px);}
+}
+
 /* ===== BLINDAJE DE ICONOS (fuerza fuente tabler-icons) ===== */
 .ti{font-family:"tabler-icons" !important; font-style:normal !important; line-height:1 !important;}
 
@@ -399,7 +442,55 @@ button, input{font-family:'Inter',sans-serif;}
         </div>
       </section>
       <section class="view" id="view-reportes">
-        <div class="wip"><i class="ti ti-chart-bar"></i>Vista de Reportes — próxima iteración</div>
+        <div class="rep-body">
+          <div class="rep-hdr">
+            <div>
+              <div class="rep-sub">Estadísticas</div>
+              <div class="rep-title">Reportes</div>
+            </div>
+            <button class="rep-export-btn" id="btn-exportar-reporte">
+              <i class="ti ti-printer" style="font-size:15px;"></i>Exportar PDF
+            </button>
+          </div>
+
+          <!-- Tarjetas resumen -->
+          <div class="rep-cards">
+            <div class="rep-card">
+              <div class="rep-card-num" id="rep-total">—</div>
+              <div class="rep-card-lbl">Total sesiones</div>
+            </div>
+            <div class="rep-card">
+              <div class="rep-card-num rep-card-accent" id="rep-completadas">—</div>
+              <div class="rep-card-lbl">Completadas</div>
+            </div>
+            <div class="rep-card">
+              <div class="rep-card-num rep-card-warn" id="rep-proximas">—</div>
+              <div class="rep-card-lbl">Próximas</div>
+            </div>
+            <div class="rep-card">
+              <div class="rep-card-num" id="rep-pct">—</div>
+              <div class="rep-card-lbl">% Cumplimiento</div>
+            </div>
+          </div>
+
+          <!-- Sesiones por mes -->
+          <div class="rep-section">
+            <div class="rep-section-title">Sesiones por mes (últimos 6 meses)</div>
+            <div id="rep-barras-mes"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+
+          <!-- Ranking de pacientes -->
+          <div class="rep-section">
+            <div class="rep-section-title">Sesiones por paciente</div>
+            <div id="rep-ranking-pacientes"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+
+          <!-- Virtual vs Presencial -->
+          <div class="rep-section">
+            <div class="rep-section-title">Modalidad</div>
+            <div id="rep-modalidad"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+        </div>
       </section>
     </main>
   </div>
@@ -1106,6 +1197,235 @@ document.getElementById('confirm-export').addEventListener('click', () => {
   win.document.write(html);
   win.document.close();
 });
+
+/* ===== REPORTES (V1.7) ===== */
+function renderReportes(){
+  const sesiones = todasSesionesCache;
+  const total = sesiones.length;
+  const completadas = sesiones.filter(s => s.estado === 'done').length;
+  const proximas = sesiones.filter(s => s.estado === 'upcoming').length;
+  const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+  document.getElementById('rep-total').textContent = total;
+  document.getElementById('rep-completadas').textContent = completadas;
+  document.getElementById('rep-proximas').textContent = proximas;
+  document.getElementById('rep-pct').textContent = total > 0 ? pct + '%' : '—';
+
+  // --- Sesiones por mes (últimos 6 meses) ---
+  const hoy = new Date();
+  const meses = [];
+  for(let i = 5; i >= 0; i--){
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl = d.toLocaleDateString('es-CO', { month:'short', year:'2-digit' });
+    meses.push({ key, lbl, count: 0 });
+  }
+  sesiones.forEach(s => {
+    if(!s.fechaStr) return;
+    const key = s.fechaStr.slice(0,7);
+    const m = meses.find(x => x.key === key);
+    if(m) m.count++;
+  });
+  const maxMes = Math.max(1, ...meses.map(m => m.count));
+  const elMes = document.getElementById('rep-barras-mes');
+  if(meses.every(m => m.count === 0)){
+    elMes.innerHTML = '<div class="rep-empty">Sin datos suficientes.</div>';
+  } else {
+    elMes.innerHTML = meses.map(m => `
+      <div class="rep-bar-row">
+        <div class="rep-bar-lbl">${m.lbl}</div>
+        <div class="rep-bar-track">
+          <div class="rep-bar-fill" style="width:${Math.round((m.count/maxMes)*100)}%"></div>
+        </div>
+        <div class="rep-bar-val">${m.count}</div>
+      </div>`).join('');
+  }
+
+  // --- Ranking de pacientes ---
+  const porPaciente = {};
+  sesiones.forEach(s => {
+    if(!s.pacienteId) return;
+    porPaciente[s.pacienteId] = (porPaciente[s.pacienteId] || 0) + 1;
+  });
+  const ranking = Object.entries(porPaciente)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 8);
+  const maxPac = Math.max(1, ...ranking.map(r => r[1]));
+  const elPac = document.getElementById('rep-ranking-pacientes');
+  if(ranking.length === 0){
+    elPac.innerHTML = '<div class="rep-empty">Sin datos suficientes.</div>';
+  } else {
+    elPac.innerHTML = ranking.map(([pid, cnt]) => {
+      const p = pacientesCache[pid] || {};
+      return `<div class="rep-bar-row">
+        <div class="rep-bar-lbl" title="${p.nombre || 'Paciente'}">${p.nombre ? p.nombre.split(' ')[0] : 'Paciente'}</div>
+        <div class="rep-bar-track">
+          <div class="rep-bar-fill warm" style="width:${Math.round((cnt/maxPac)*100)}%"></div>
+        </div>
+        <div class="rep-bar-val">${cnt}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // --- Modalidad Virtual vs Presencial ---
+  const virt = sesiones.filter(s => s.modalidad === 'virtual').length;
+  const pres = sesiones.filter(s => s.modalidad === 'presencial').length;
+  const totalMod = virt + pres;
+  const elMod = document.getElementById('rep-modalidad');
+  if(totalMod === 0){
+    elMod.innerHTML = '<div class="rep-empty">Sin datos suficientes.</div>';
+  } else {
+    const pVirt = Math.round((virt/totalMod)*100);
+    const pPres = 100 - pVirt;
+    elMod.innerHTML = `
+      <div class="rep-mod-bar">
+        <div class="rep-mod-virt" style="width:${pVirt}%"></div>
+        <div class="rep-mod-pres" style="width:${pPres}%"></div>
+      </div>
+      <div class="rep-mod-legend">
+        <div class="rep-mod-item">
+          <div class="rep-mod-dot" style="background:var(--virt-txt)"></div>
+          <div>Virtual <strong>${virt}</strong> (${pVirt}%)</div>
+        </div>
+        <div class="rep-mod-item">
+          <div class="rep-mod-dot" style="background:var(--warm)"></div>
+          <div>Presencial <strong>${pres}</strong> (${pPres}%)</div>
+        </div>
+      </div>`;
+  }
+}
+
+function exportarReportePDF(){
+  const sesiones = todasSesionesCache;
+  const total = sesiones.length;
+  const completadas = sesiones.filter(s => s.estado === 'done').length;
+  const proximas = sesiones.filter(s => s.estado === 'upcoming').length;
+  const pct = total > 0 ? Math.round((completadas/total)*100) + '%' : '—';
+  const fecha = new Date().toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+  const colorAcento = '#4A7B6F';
+
+  // Sesiones por mes
+  const hoy = new Date();
+  const meses = [];
+  for(let i = 5; i >= 0; i--){
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl = d.toLocaleDateString('es-CO', { month:'long', year:'numeric' });
+    meses.push({ key, lbl, count: 0 });
+  }
+  sesiones.forEach(s => {
+    if(!s.fechaStr) return;
+    const key = s.fechaStr.slice(0,7);
+    const m = meses.find(x => x.key === key);
+    if(m) m.count++;
+  });
+  const maxMes = Math.max(1, ...meses.map(m => m.count));
+
+  // Ranking pacientes
+  const porPaciente = {};
+  sesiones.forEach(s => {
+    if(!s.pacienteId) return;
+    porPaciente[s.pacienteId] = (porPaciente[s.pacienteId] || 0) + 1;
+  });
+  const ranking = Object.entries(porPaciente).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxPac = Math.max(1, ...ranking.map(r=>r[1]));
+
+  // Modalidad
+  const virt = sesiones.filter(s=>s.modalidad==='virtual').length;
+  const pres = sesiones.filter(s=>s.modalidad==='presencial').length;
+  const totalMod = virt + pres;
+  const pVirt = totalMod > 0 ? Math.round((virt/totalMod)*100) : 0;
+
+  const barStyle = (pct, color) =>
+    `<div style="background:#e2e8f0;border-radius:4px;height:10px;flex:1;overflow:hidden;">
+      <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;"></div>
+    </div>`;
+
+  const filasMes = meses.map(m =>
+    `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="width:110px;font-size:12px;color:#475569;">${m.lbl}</div>
+      ${barStyle(Math.round((m.count/maxMes)*100), colorAcento)}
+      <div style="width:24px;text-align:right;font-size:12px;color:#64748b;">${m.count}</div>
+    </div>`).join('');
+
+  const filasRanking = ranking.map(([pid, cnt]) => {
+    const p = pacientesCache[pid] || {};
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="width:110px;font-size:12px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.nombre || 'Paciente'}</div>
+      ${barStyle(Math.round((cnt/maxPac)*100), '#B8874A')}
+      <div style="width:24px;text-align:right;font-size:12px;color:#64748b;">${cnt}</div>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Reporte — ${NOMBRE_CONSULTORIO}</title>
+  <style>
+    body{font-family:sans-serif;padding:40px;max-width:850px;margin:0 auto;color:#0f172a;}
+    @media print{.no-print{display:none!important}}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid ${colorAcento};padding-bottom:20px;margin-bottom:24px;}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+    .card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;}
+    .card-num{font-size:22px;font-weight:700;color:#0f172a;}
+    .card-lbl{font-size:11px;color:#64748b;margin-top:4px;}
+    .section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-bottom:16px;}
+    .section-title{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:14px;}
+    th{background:${colorAcento};color:#fff;padding:10px;text-align:left;font-size:12px;}
+  </style></head><body>
+  <button class="no-print" onclick="window.print()" style="padding:12px;background:${colorAcento};color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-bottom:20px;width:100%;">🖨️ Imprimir / Guardar como PDF</button>
+  <div class="header">
+    <div>
+      <h1 style="margin:0;">${NOMBRE_CONSULTORIO}</h1>
+      <div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;">REPORTE GENERAL DE SESIONES</div>
+    </div>
+    <div style="text-align:right;font-size:0.9rem;"><strong>Fecha de exportación:</strong><br>${fecha}</div>
+  </div>
+  <div class="cards">
+    <div class="card"><div class="card-num">${total}</div><div class="card-lbl">Total sesiones</div></div>
+    <div class="card"><div class="card-num" style="color:${colorAcento}">${completadas}</div><div class="card-lbl">Completadas</div></div>
+    <div class="card"><div class="card-num" style="color:#B8874A">${proximas}</div><div class="card-lbl">Próximas</div></div>
+    <div class="card"><div class="card-num">${pct}</div><div class="card-lbl">% Cumplimiento</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Sesiones por mes (últimos 6 meses)</div>
+    ${filasMes || '<p style="color:#94a3b8;font-size:12px;">Sin datos.</p>'}
+  </div>
+  <div class="section">
+    <div class="section-title">Sesiones por paciente</div>
+    ${filasRanking || '<p style="color:#94a3b8;font-size:12px;">Sin datos.</p>'}
+  </div>
+  <div class="section">
+    <div class="section-title">Modalidad</div>
+    <div style="background:#e2e8f0;border-radius:7px;height:14px;overflow:hidden;display:flex;margin-bottom:10px;">
+      <div style="width:${pVirt}%;background:#5068B0;height:100%;"></div>
+      <div style="width:${100-pVirt}%;background:#B8874A;height:100%;"></div>
+    </div>
+    <div style="display:flex;gap:20px;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:#5068B0;"></div>
+        Virtual <strong>${virt}</strong> (${pVirt}%)
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:#B8874A;"></div>
+        Presencial <strong>${pres}</strong> (${100-pVirt}%)
+      </div>
+    </div>
+  </div>
+  <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión — ${fecha}</p>
+  </body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=800');
+  win.document.write(html);
+  win.document.close();
+}
+
+// Enganchar botón exportar
+document.getElementById('btn-exportar-reporte').addEventListener('click', exportarReportePDF);
+
+// Renderizar reportes al entrar a la vista
+document.querySelector('.nav-item[data-view="reportes"]').addEventListener('click', renderReportes);
+
+// También re-renderizar cuando llegan datos nuevos de sesiones (por si el usuario ya estaba en la vista)
+const _origTodasSesionesRender = renderSesionesView;
 
 document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
   if(!deleteTargetId) return;
