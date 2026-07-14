@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.4 -->
+<!-- V1.6 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
 
 <script>
 /* ===== ANTI-FLASH THEME (IIFE) ===== */
@@ -76,6 +76,26 @@ button, input{font-family:'Inter',sans-serif;}
   background:var(--pg); color:var(--txt); padding:0 12px; font-size:13.5px; outline:none;
 }
 .login-field input:focus{border-color:var(--pri);}
+.login-field select{
+  width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:0 10px; font-size:13.5px; outline:none;
+  font-family:'Inter',sans-serif; cursor:pointer;
+}
+.login-field select:focus{border-color:var(--pri);}
+.login-field textarea{
+  width:100%; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:8px 12px; font-size:13.5px; outline:none;
+  font-family:'Inter',sans-serif; resize:vertical; min-height:60px;
+}
+.login-field textarea:focus{border-color:var(--pri);}
+.ses-actions{display:flex; gap:6px; flex-shrink:0; align-self:flex-start;}
+.ses-actions .theme-toggle{width:26px; height:26px;}
+.filter-bar{display:flex; gap:10px; margin-top:12px;}
+.filter-bar select{
+  height:34px; border-radius:7px; border:0.5px solid var(--brd);
+  background:var(--crd); color:var(--txt); padding:0 10px; font-size:12px; outline:none;
+  font-family:'Inter',sans-serif; cursor:pointer;
+}
 .login-btn{
   width:100%; height:42px; border-radius:8px; border:none; background:var(--pri);
   color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:6px;
@@ -356,7 +376,27 @@ button, input{font-family:'Inter',sans-serif;}
         </div>
       </section>
       <section class="view" id="view-sesiones">
-        <div class="wip"><i class="ti ti-notes"></i>Vista de Sesiones — próxima iteración</div>
+        <div class="mhdr" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div class="mdate">Historial</div>
+            <div class="mtitle">Sesiones</div>
+            <div class="filter-bar">
+              <select id="ses-filter-paciente"><option value="">Todos los pacientes</option></select>
+              <select id="ses-filter-estado">
+                <option value="">Todos los estados</option>
+                <option value="done">Completadas</option>
+                <option value="active">En curso</option>
+                <option value="upcoming">Próximas</option>
+              </select>
+            </div>
+          </div>
+          <button class="login-btn" id="btn-nueva-sesion" style="width:auto; padding:0 16px; height:36px; margin-top:0;">
+            <i class="ti ti-plus" style="font-size:14px; vertical-align:-2px; margin-right:5px;"></i>Nueva sesión
+          </button>
+        </div>
+        <div class="sessions" id="sesiones-list">
+          <div class="empty-state">Cargando sesiones...</div>
+        </div>
       </section>
       <section class="view" id="view-reportes">
         <div class="wip"><i class="ti ti-chart-bar"></i>Vista de Reportes — próxima iteración</div>
@@ -421,6 +461,46 @@ button, input{font-family:'Inter',sans-serif;}
           <button class="login-btn" style="background:var(--danger);" id="confirm-delete-btn">Eliminar definitivamente</button>
         </div>
         <div class="login-err" id="confirm-err"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVA / EDITAR SESIÓN -->
+  <div id="sesion-modal-overlay" style="display:none; position:relative; z-index:50;">
+    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
+      <div style="width:100%; max-width:420px; max-height:88vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <div style="font-size:15px; font-weight:600;" id="sesion-modal-title">Nueva sesión</div>
+          <span style="cursor:pointer; color:var(--muted); font-size:16px;" id="sesion-modal-close"><i class="ti ti-x"></i></span>
+        </div>
+
+        <div class="login-field"><label>Paciente</label>
+          <select id="sf-paciente"><option value="">Selecciona un paciente</option></select>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="login-field" style="flex:1;"><label>Fecha</label><input type="date" id="sf-fecha"></div>
+          <div class="login-field" style="flex:1;"><label>Hora</label><input type="time" id="sf-hora"></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="login-field" style="flex:1;"><label>Duración</label><input type="text" id="sf-duracion" placeholder="50 min"></div>
+          <div class="login-field" style="flex:1;"><label># Sesión</label><input type="number" id="sf-numero" placeholder="1" min="1"></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="login-field" style="flex:1;"><label>Modalidad</label>
+            <select id="sf-modalidad"><option value="presencial">Presencial</option><option value="virtual">Virtual</option></select>
+          </div>
+          <div class="login-field" style="flex:1;"><label>Estado</label>
+            <select id="sf-estado"><option value="upcoming">Próxima</option><option value="active">En curso</option><option value="done">Completada</option></select>
+          </div>
+        </div>
+        <div class="login-field"><label>Nota</label><textarea id="sf-nota" placeholder="Notas de la sesión (opcional)"></textarea></div>
+
+        <div class="login-err" id="sesion-modal-err"></div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button class="login-btn" style="background:var(--crd); color:var(--txt); border:0.5px solid var(--brd);" id="sesion-modal-cancel">Cancelar</button>
+          <button class="login-btn" id="sesion-modal-save">Guardar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -551,6 +631,8 @@ document.getElementById('pf-back').addEventListener('click', () => {
 /* ===== DATOS EN MEMORIA ===== */
 let pacientesCache = {};   // id -> datos paciente
 let sesionesCache = [];    // array de sesiones de hoy
+let todasSesionesCache = []; // array de TODAS las sesiones (vista Sesiones)
+let sesionEditingId = null;  // id de la sesión en edición (null = nueva)
 
 /* ===== LISTENERS FIRESTORE ===== */
 function startListeners(){
@@ -580,6 +662,8 @@ function startListeners(){
     renderSessions(); // refresca por si ya llegaron sesiones antes que pacientes
     // Refresca la grilla de la vista Pacientes si está definida (evita que quede desactualizada)
     if(typeof renderPacientesGrid === 'function') renderPacientesGrid();
+    poblarSelectsPaciente();
+    renderSesionesView(); // refresca nombres si ya habían llegado sesiones antes que pacientes
   }, (err) => {
     console.error('Error cargando pacientes:', err);
     document.getElementById('sb-pacientes-list').innerHTML = '<div class="pt-empty">Error al cargar pacientes.</div>';
@@ -601,6 +685,19 @@ function startListeners(){
   }, (err) => {
     console.error('Error cargando sesiones:', err);
     document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error al cargar la agenda.</div>';
+  });
+
+  // Historial completo de sesiones (vista "Sesiones")
+  const todasSesionesQ = query(collection(db, 'sesiones'), orderBy('fechaStr', 'desc'));
+  onSnapshot(todasSesionesQ, (snap) => {
+    todasSesionesCache = [];
+    snap.forEach(docSnap => {
+      todasSesionesCache.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    renderSesionesView();
+  }, (err) => {
+    console.error('Error cargando historial de sesiones:', err);
+    document.getElementById('sesiones-list').innerHTML = '<div class="empty-state">Error al cargar el historial.</div>';
   });
 }
 
@@ -649,6 +746,145 @@ function updateStats(list){
   document.getElementById('st-active').textContent = list.filter(s=>s.estado==='active').length;
   document.getElementById('st-upcoming').textContent = list.filter(s=>s.estado==='upcoming').length;
   document.getElementById('st-done').textContent = list.filter(s=>s.estado==='done').length;
+}
+
+/* ===== VISTA SESIONES (historial completo) ===== */
+function poblarSelectsPaciente(){
+  const opciones = Object.entries(pacientesCache)
+    .sort((a,b) => (a[1].nombre||'').localeCompare(b[1].nombre||''))
+    .map(([id,p]) => `<option value="${id}">${p.nombre || 'Sin nombre'}</option>`).join('');
+  const filtroSel = document.getElementById('ses-filter-paciente');
+  const modalSel = document.getElementById('sf-paciente');
+  if(filtroSel){
+    const actual = filtroSel.value;
+    filtroSel.innerHTML = '<option value="">Todos los pacientes</option>' + opciones;
+    filtroSel.value = actual;
+  }
+  if(modalSel){
+    const actual = modalSel.value;
+    modalSel.innerHTML = '<option value="">Selecciona un paciente</option>' + opciones;
+    modalSel.value = actual;
+  }
+}
+
+function renderSesionesView(){
+  const listEl = document.getElementById('sesiones-list');
+  if(!listEl) return;
+  const fPaciente = document.getElementById('ses-filter-paciente').value;
+  const fEstado = document.getElementById('ses-filter-estado').value;
+  let lista = todasSesionesCache;
+  if(fPaciente) lista = lista.filter(s => s.pacienteId === fPaciente);
+  if(fEstado) lista = lista.filter(s => s.estado === fEstado);
+
+  if(lista.length === 0){
+    listEl.innerHTML = '<div class="empty-state">No hay sesiones registradas con estos filtros.</div>';
+    return;
+  }
+  listEl.innerHTML = lista.map(s => {
+    const paciente = pacientesCache[s.pacienteId] || {};
+    return `<div class="ses-card ${s.estado==='done'?'done':''}">
+      <div class="tcol">
+        <div class="thr">${s.fechaStr || '—'}</div>
+        <div class="tdot ${s.estado || 'upcoming'}"></div>
+        <div class="tdur">${s.hora || ''}</div>
+      </div>
+      <div class="sinfo">
+        <div class="snm">${paciente.nombre || 'Paciente'}</div>
+        <div class="stype">${s.nota ? s.nota.slice(0,80) : 'Sin notas'}</div>
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span></div>
+      </div>
+      <div class="ses-actions">
+        <button class="theme-toggle ses-edit-btn" data-sid="${s.id}" style="color:var(--muted); border-color:var(--brd);"><i class="ti ti-edit"></i></button>
+        <button class="theme-toggle ses-del-btn" data-sid="${s.id}"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.ses-edit-btn').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); openSesionModal(el.dataset.sid); });
+  });
+  listEl.querySelectorAll('.ses-del-btn').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); eliminarSesion(el.dataset.sid); });
+  });
+}
+document.getElementById('ses-filter-paciente').addEventListener('change', renderSesionesView);
+document.getElementById('ses-filter-estado').addEventListener('change', renderSesionesView);
+
+/* ===== MODAL NUEVA / EDITAR SESIÓN ===== */
+const sesionModalOverlay = document.getElementById('sesion-modal-overlay');
+function openSesionModal(sid){
+  sesionEditingId = sid || null;
+  document.getElementById('sesion-modal-err').textContent = '';
+  poblarSelectsPaciente();
+  if(sid){
+    const s = todasSesionesCache.find(x => x.id === sid);
+    if(!s) return;
+    document.getElementById('sesion-modal-title').textContent = 'Editar sesión';
+    document.getElementById('sf-paciente').value = s.pacienteId || '';
+    document.getElementById('sf-fecha').value = s.fechaStr || '';
+    document.getElementById('sf-hora').value = s.hora || '';
+    document.getElementById('sf-duracion').value = s.duracion || '';
+    document.getElementById('sf-numero').value = s.numeroSesion || '';
+    document.getElementById('sf-modalidad').value = s.modalidad || 'presencial';
+    document.getElementById('sf-estado').value = s.estado || 'upcoming';
+    document.getElementById('sf-nota').value = s.nota || '';
+  } else {
+    document.getElementById('sesion-modal-title').textContent = 'Nueva sesión';
+    document.getElementById('sf-paciente').value = '';
+    document.getElementById('sf-fecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('sf-hora').value = '';
+    document.getElementById('sf-duracion').value = '50 min';
+    document.getElementById('sf-numero').value = '';
+    document.getElementById('sf-modalidad').value = 'presencial';
+    document.getElementById('sf-estado').value = 'upcoming';
+    document.getElementById('sf-nota').value = '';
+  }
+  sesionModalOverlay.style.display = 'block';
+}
+function closeSesionModal(){ sesionModalOverlay.style.display = 'none'; sesionEditingId = null; }
+document.getElementById('btn-nueva-sesion').addEventListener('click', () => openSesionModal(null));
+document.getElementById('sesion-modal-close').addEventListener('click', closeSesionModal);
+document.getElementById('sesion-modal-cancel').addEventListener('click', closeSesionModal);
+
+document.getElementById('sesion-modal-save').addEventListener('click', async () => {
+  const errEl = document.getElementById('sesion-modal-err');
+  const pacienteId = document.getElementById('sf-paciente').value;
+  const fechaStr = document.getElementById('sf-fecha').value;
+  const hora = document.getElementById('sf-hora').value;
+  if(!pacienteId || !fechaStr || !hora){
+    errEl.textContent = 'Paciente, fecha y hora son obligatorios.';
+    return;
+  }
+  const data = {
+    pacienteId,
+    fechaStr,
+    hora,
+    duracion: document.getElementById('sf-duracion').value.trim(),
+    numeroSesion: parseInt(document.getElementById('sf-numero').value) || null,
+    modalidad: document.getElementById('sf-modalidad').value,
+    estado: document.getElementById('sf-estado').value,
+    nota: document.getElementById('sf-nota').value.trim()
+  };
+  try{
+    if(sesionEditingId){
+      await updateDoc(doc(db, 'sesiones', sesionEditingId), data);
+    } else {
+      await addDoc(collection(db, 'sesiones'), data);
+    }
+    closeSesionModal();
+  } catch(err){
+    console.error(err);
+    errEl.textContent = 'No pudimos guardar. Intenta de nuevo.';
+  }
+});
+
+async function eliminarSesion(sid){
+  if(!confirm('¿Eliminar esta sesión de forma permanente? Esta acción no se puede deshacer.')) return;
+  try{
+    await deleteDoc(doc(db, 'sesiones', sid));
+  } catch(err){
+    console.error(err);
+    alert('No pudimos eliminar la sesión. Intenta de nuevo.');
+  }
 }
 
 /* ===== FICHA DE PACIENTE ===== */
