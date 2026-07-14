@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.3 -->
+<!-- V1.4 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
@@ -190,6 +190,9 @@ button, input{font-family:'Inter',sans-serif;}
 
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
+
+/* ===== BLINDAJE DE ICONOS (fuerza fuente tabler-icons) ===== */
+.ti{font-family:"tabler-icons" !important; font-style:normal !important; line-height:1 !important;}
 
 /* ===== ELIMINAR PACIENTE ===== */
 .pf-del-btn{color:var(--danger) !important; border-color:var(--danger-lt) !important;}
@@ -448,6 +451,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+/* ===== IDENTIDAD DEL CONSULTORIO (reutilizable en PDFs/impresos) ===== */
+const NOMBRE_CONSULTORIO = "ZAMORA PSICOLOGÍA";
+
 /* ============================================
    ESTRUCTURA DE DATOS ESPERADA EN FIRESTORE
    Colección "pacientes" — documentos con:
@@ -572,6 +578,8 @@ function startListeners(){
       el.addEventListener('click', () => openFicha(el.dataset.pid));
     });
     renderSessions(); // refresca por si ya llegaron sesiones antes que pacientes
+    // Refresca la grilla de la vista Pacientes si está definida (evita que quede desactualizada)
+    if(typeof renderPacientesGrid === 'function') renderPacientesGrid();
   }, (err) => {
     console.error('Error cargando pacientes:', err);
     document.getElementById('sb-pacientes-list').innerHTML = '<div class="pt-empty">Error al cargar pacientes.</div>';
@@ -835,7 +843,7 @@ document.getElementById('confirm-export').addEventListener('click', () => {
   </style></head><body>
   <button class="no-print" onclick="window.print()" style="padding:12px;background:${colorAcento};color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-bottom:20px;width:100%;">🖨️ Imprimir / Guardar como PDF</button>
   <div class="header">
-    <div><h1 style="margin:0;letter-spacing:1px;">PSICOGESTIÓN</h1><div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;">FICHA DE PACIENTE — RESPALDO</div></div>
+    <div><h1 style="margin:0;letter-spacing:1px;">${NOMBRE_CONSULTORIO}</h1><div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;">FICHA DE PACIENTE — RESPALDO</div></div>
     <div style="text-align:right;font-size:0.9rem;"><strong>Fecha de exportación:</strong><br>${fecha}</div>
   </div>
   <div class="info-grid">
