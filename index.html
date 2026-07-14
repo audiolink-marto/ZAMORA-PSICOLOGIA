@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.8 -->
+<!-- V1.9: agenda con vistas Día/Semana/Mes + alarma permanente de choque de horario en card -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -180,7 +180,44 @@ button, input{font-family:'Inter',sans-serif;}
 .b-virt{background:var(--virt-bg); color:var(--virt-txt);}
 .b-pres{background:var(--pres-bg); color:var(--pres-txt);}
 .b-ses{background:var(--pg); color:var(--muted);}
+.b-conflict{background:var(--danger-lt); color:var(--danger);}
+.ses-card.conflict{border-color:var(--danger); box-shadow:0 0 0 1px var(--danger);}
 .empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
+
+/* ===== AGENDA: TABS DIA/SEMANA/MES (V1.9) ===== */
+.agenda-tabs{display:flex; gap:4px; margin-top:12px; background:var(--pg); border-radius:8px; padding:3px; width:fit-content;}
+.atab{font-size:12px; font-weight:500; color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; transition:all .15s;}
+.atab.active{background:var(--crd); color:var(--txt); box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.agenda-subview{display:none;}
+.agenda-subview.active{display:block;}
+.awk-nav, .amo-nav{display:flex; align-items:center; justify-content:space-between; padding:12px 22px 0;}
+.awk-navbtn, .amo-navbtn{width:28px; height:28px; border-radius:6px; border:0.5px solid var(--brd); background:var(--crd); color:var(--txt); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+.awk-navbtn:hover, .amo-navbtn:hover{border-color:var(--pri);}
+.awk-navlbl, .amo-navlbl{font-size:12.5px; font-weight:600; color:var(--txt); text-transform:capitalize;}
+
+.week-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:8px; padding:14px 22px;}
+.week-day{min-width:0;}
+.week-daylbl{font-size:10.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; text-align:center;}
+.week-daylbl.today{color:var(--pri);}
+.week-daycards{display:flex; flex-direction:column; gap:6px; min-height:20px;}
+.wk-card{background:var(--crd); border:0.5px solid var(--brd); border-radius:8px; padding:7px 8px; cursor:pointer; transition:border-color .15s;}
+.wk-card:hover{border-color:var(--pri);}
+.wk-card.done{opacity:.6;}
+.wk-card.conflict{border-color:var(--danger); box-shadow:0 0 0 1px var(--danger);}
+.wk-hora{font-size:11px; font-weight:600; color:var(--txt);}
+.wk-nm{font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.wk-empty{font-size:10.5px; color:var(--muted); text-align:center; padding:8px 0; opacity:.5;}
+
+.month-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:14px 22px;}
+.month-dow{font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; text-align:center; padding-bottom:4px;}
+.month-cell{background:var(--crd); border:0.5px solid var(--brd); border-radius:8px; min-height:64px; padding:6px; cursor:pointer; transition:border-color .15s;}
+.month-cell:hover{border-color:var(--pri);}
+.month-cell.empty{background:transparent; border:none; cursor:default;}
+.month-cell.today{border-color:var(--pri);}
+.month-daynum{font-size:11px; font-weight:600; color:var(--txt);}
+.month-dots{display:flex; flex-wrap:wrap; gap:2px; margin-top:5px;}
+.month-dot{width:5px; height:5px; border-radius:50%; background:var(--warm);}
+.month-dot.conflict{background:var(--danger);}
 
 /* Ficha de paciente */
 .pf-body{flex:1; overflow-y:auto; padding:20px 22px;}
@@ -335,6 +372,12 @@ button, input{font-family:'Inter',sans-serif;}
   .sessions, .pf-body{padding:12px 16px;}
   .stats-row{flex-wrap:wrap;}
   .scard{min-width:calc(50% - 4px);}
+  .week-grid{grid-template-columns:1fr; padding:10px 16px;}
+  .week-daylbl{text-align:left;}
+  .month-grid{padding:10px 16px; gap:4px;}
+  .month-cell{min-height:44px; padding:4px;}
+  .month-dow{font-size:9px;}
+  .awk-nav, .amo-nav{padding:10px 16px 0;}
 }
 </style>
 </head>
@@ -428,9 +471,35 @@ button, input{font-family:'Inter',sans-serif;}
             <div class="scard"><div class="snum" id="st-upcoming" style="color:var(--warm)">0</div><div class="slbl">Pendientes</div></div>
             <div class="scard"><div class="snum" id="st-done" style="color:var(--done)">0</div><div class="slbl">Completadas</div></div>
           </div>
+          <div class="agenda-tabs">
+            <div class="atab active" data-atab="dia">Día</div>
+            <div class="atab" data-atab="semana">Semana</div>
+            <div class="atab" data-atab="mes">Mes</div>
+          </div>
         </div>
-        <div class="sessions" id="sessions-list">
-          <div class="empty-state">Cargando sesiones...</div>
+
+        <div class="agenda-subview active" id="agenda-sub-dia">
+          <div class="sessions" id="sessions-list">
+            <div class="empty-state">Cargando sesiones...</div>
+          </div>
+        </div>
+
+        <div class="agenda-subview" id="agenda-sub-semana">
+          <div class="awk-nav">
+            <div class="awk-navbtn" id="awk-prev"><i class="ti ti-chevron-left"></i></div>
+            <div class="awk-navlbl" id="awk-label">—</div>
+            <div class="awk-navbtn" id="awk-next"><i class="ti ti-chevron-right"></i></div>
+          </div>
+          <div class="week-grid" id="week-grid"></div>
+        </div>
+
+        <div class="agenda-subview" id="agenda-sub-mes">
+          <div class="amo-nav">
+            <div class="amo-navbtn" id="amo-prev"><i class="ti ti-chevron-left"></i></div>
+            <div class="amo-navlbl" id="amo-label">—</div>
+            <div class="amo-navbtn" id="amo-next"><i class="ti ti-chevron-right"></i></div>
+          </div>
+          <div class="month-grid" id="month-grid"></div>
         </div>
       </section>
 
@@ -885,6 +954,9 @@ function startListeners(){
       todasSesionesCache.push({ id: docSnap.id, ...docSnap.data() });
     });
     renderSesionesView();
+    // Refresca semana/mes si están visibles (V1.9)
+    if(document.getElementById('agenda-sub-semana').classList.contains('active')) renderWeekView();
+    if(document.getElementById('agenda-sub-mes').classList.contains('active')) renderMonthView();
   }, (err) => {
     console.error('Error cargando historial de sesiones:', err);
     document.getElementById('sesiones-list').innerHTML = '<div class="empty-state">Error al cargar el historial.</div>';
@@ -932,6 +1004,50 @@ function bmod(m){
     : '<span class="badge b-pres"><i class="ti ti-building" style="font-size:10px;margin-right:3px"></i>Presencial</span>';
 }
 
+/* ===== DETECCIÓN DE CHOQUES DE HORARIO (V1.9) =====
+   Marca como conflicto: misma hora exacta, o rangos hora+duración que se solapan,
+   dentro de un mismo día (fechaStr). Devuelve un Set con los ids en conflicto. */
+function duracionAMinutos(d){
+  const n = parseInt(String(d||'').replace(/[^\d]/g,''), 10);
+  return Number.isFinite(n) && n > 0 ? n : 50; // 50 min por defecto si no se puede leer
+}
+function horaAMinutos(h){
+  if(!h || !h.includes(':')) return null;
+  const [hh, mm] = h.split(':').map(Number);
+  if(Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return hh*60 + mm;
+}
+function detectarChoques(lista){
+  const conflictIds = new Set();
+  const porDia = {};
+  lista.forEach(s => {
+    const dia = s.fechaStr || 'hoy';
+    if(!porDia[dia]) porDia[dia] = [];
+    porDia[dia].push(s);
+  });
+  Object.values(porDia).forEach(dia => {
+    for(let i = 0; i < dia.length; i++){
+      const a = dia[i];
+      const aIni = horaAMinutos(a.hora);
+      if(aIni === null) continue;
+      const aFin = aIni + duracionAMinutos(a.duracion);
+      for(let j = i+1; j < dia.length; j++){
+        const b = dia[j];
+        const bIni = horaAMinutos(b.hora);
+        if(bIni === null) continue;
+        const bFin = bIni + duracionAMinutos(b.duracion);
+        const mismaHora = aIni === bIni;
+        const seSolapan = aIni < bFin && bIni < aFin;
+        if(mismaHora || seSolapan){
+          conflictIds.add(a.id);
+          conflictIds.add(b.id);
+        }
+      }
+    }
+  });
+  return conflictIds;
+}
+
 function renderSessions(){
   const listEl = document.getElementById('sessions-list');
   if(sesionesCache.length === 0){
@@ -939,9 +1055,11 @@ function renderSessions(){
     updateStats([]);
     return;
   }
+  const choques = detectarChoques(sesionesCache);
   listEl.innerHTML = sesionesCache.map(s => {
     const paciente = pacientesCache[s.pacienteId] || {};
-    return `<div class="ses-card ${s.estado==='done'?'done':''}" data-pid="${s.pacienteId}">
+    const enChoque = choques.has(s.id);
+    return `<div class="ses-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''}" data-pid="${s.pacienteId}">
       <div class="tcol">
         <div class="thr">${s.hora || '--:--'}</div>
         <div class="tdot ${s.estado || 'upcoming'}"></div>
@@ -950,7 +1068,7 @@ function renderSessions(){
       <div class="sinfo">
         <div class="snm">${paciente.nombre || 'Paciente'}</div>
         <div class="stype">${paciente.tipoTerapia || ''}</div>
-        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span></div>
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:10px;margin-right:3px"></i>Choque</span>':''}</div>
       </div>
     </div>`;
   }).join('');
@@ -965,6 +1083,125 @@ function updateStats(list){
   document.getElementById('st-active').textContent = list.filter(s=>s.estado==='active').length;
   document.getElementById('st-upcoming').textContent = list.filter(s=>s.estado==='upcoming').length;
   document.getElementById('st-done').textContent = list.filter(s=>s.estado==='done').length;
+}
+
+/* ===== AGENDA: PESTAÑAS DIA/SEMANA/MES (V1.9) ===== */
+document.querySelectorAll('.atab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.atab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.agenda-subview').forEach(v => v.classList.remove('active'));
+    document.getElementById('agenda-sub-' + tab.dataset.atab).classList.add('active');
+    if(tab.dataset.atab === 'semana') renderWeekView();
+    if(tab.dataset.atab === 'mes') renderMonthView();
+  });
+});
+
+function fechaStrLocal(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function lunesDeSemana(d){
+  const r = new Date(d);
+  const dow = r.getDay(); // 0=domingo
+  const diff = dow === 0 ? -6 : 1 - dow;
+  r.setDate(r.getDate() + diff);
+  r.setHours(0,0,0,0);
+  return r;
+}
+
+/* ----- VISTA SEMANA ----- */
+let semanaActual = lunesDeSemana(new Date());
+document.getElementById('awk-prev').addEventListener('click', () => { semanaActual.setDate(semanaActual.getDate()-7); renderWeekView(); });
+document.getElementById('awk-next').addEventListener('click', () => { semanaActual.setDate(semanaActual.getDate()+7); renderWeekView(); });
+
+function renderWeekView(){
+  const gridEl = document.getElementById('week-grid');
+  const dias = [];
+  for(let i=0;i<7;i++){ const d = new Date(semanaActual); d.setDate(d.getDate()+i); dias.push(d); }
+  const fin = dias[6];
+  document.getElementById('awk-label').textContent =
+    `${dias[0].toLocaleDateString('es-CO',{day:'numeric',month:'short'})} — ${fin.toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})}`;
+
+  const todayStr = fechaStrLocal(new Date());
+  const sesionesSemana = todasSesionesCache.filter(s => dias.some(d => fechaStrLocal(d) === s.fechaStr));
+  const choques = detectarChoques(sesionesSemana);
+
+  gridEl.innerHTML = dias.map(d => {
+    const dstr = fechaStrLocal(d);
+    const esHoy = dstr === todayStr;
+    const delDia = sesionesSemana.filter(s => s.fechaStr === dstr).sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+    const cardsHtml = delDia.length
+      ? delDia.map(s => {
+          const paciente = pacientesCache[s.pacienteId] || {};
+          const enChoque = choques.has(s.id);
+          return `<div class="wk-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''}" data-pid="${s.pacienteId}">
+            <div class="wk-hora">${s.hora||'--:--'}${enChoque?' <i class="ti ti-alert-triangle" style="color:var(--danger);font-size:10px"></i>':''}</div>
+            <div class="wk-nm">${paciente.nombre || 'Paciente'}</div>
+          </div>`;
+        }).join('')
+      : '<div class="wk-empty">Sin sesiones</div>';
+    return `<div class="week-day">
+      <div class="week-daylbl ${esHoy?'today':''}">${d.toLocaleDateString('es-CO',{weekday:'short',day:'numeric'})}</div>
+      <div class="week-daycards">${cardsHtml}</div>
+    </div>`;
+  }).join('');
+
+  gridEl.querySelectorAll('.wk-card').forEach(el => {
+    el.addEventListener('click', () => openFicha(el.dataset.pid));
+  });
+}
+
+/* ----- VISTA MES ----- */
+let mesActual = new Date(); mesActual.setDate(1);
+document.getElementById('amo-prev').addEventListener('click', () => { mesActual.setMonth(mesActual.getMonth()-1); renderMonthView(); });
+document.getElementById('amo-next').addEventListener('click', () => { mesActual.setMonth(mesActual.getMonth()+1); renderMonthView(); });
+
+function renderMonthView(){
+  const gridEl = document.getElementById('month-grid');
+  document.getElementById('amo-label').textContent = mesActual.toLocaleDateString('es-CO',{month:'long',year:'numeric'});
+
+  const primerDia = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1);
+  const ultimoDia = new Date(mesActual.getFullYear(), mesActual.getMonth()+1, 0);
+  const inicioOffset = primerDia.getDay() === 0 ? 6 : primerDia.getDay()-1; // lunes=0
+
+  const sesionesMes = todasSesionesCache.filter(s => {
+    if(!s.fechaStr) return false;
+    const [y,m] = s.fechaStr.split('-').map(Number);
+    return y === mesActual.getFullYear() && m === mesActual.getMonth()+1;
+  });
+  const choques = detectarChoques(sesionesMes);
+  const todayStr = fechaStrLocal(new Date());
+
+  const dow = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  let html = dow.map(d => `<div class="month-dow">${d}</div>`).join('');
+
+  for(let i=0;i<inicioOffset;i++) html += '<div class="month-cell empty"></div>';
+
+  for(let dia=1; dia<=ultimoDia.getDate(); dia++){
+    const d = new Date(mesActual.getFullYear(), mesActual.getMonth(), dia);
+    const dstr = fechaStrLocal(d);
+    const delDia = sesionesMes.filter(s => s.fechaStr === dstr);
+    const tieneChoque = delDia.some(s => choques.has(s.id));
+    const dots = delDia.slice(0,8).map(s => `<div class="month-dot ${choques.has(s.id)?'conflict':''}"></div>`).join('');
+    html += `<div class="month-cell ${dstr===todayStr?'today':''}" data-fecha="${dstr}">
+      <div class="month-daynum">${dia}</div>
+      <div class="month-dots">${dots}</div>
+    </div>`;
+  }
+  gridEl.innerHTML = html;
+
+  gridEl.querySelectorAll('.month-cell[data-fecha]').forEach(el => {
+    el.addEventListener('click', () => {
+      const d = new Date(el.dataset.fecha + 'T00:00:00');
+      semanaActual = lunesDeSemana(d);
+      document.querySelectorAll('.atab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.atab[data-atab="semana"]').classList.add('active');
+      document.querySelectorAll('.agenda-subview').forEach(v => v.classList.remove('active'));
+      document.getElementById('agenda-sub-semana').classList.add('active');
+      renderWeekView();
+    });
+  });
 }
 
 /* ===== VISTA SESIONES (historial completo) ===== */
@@ -1084,7 +1321,8 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
     nota: document.getElementById('sf-nota').value.trim()
   };
 
-  // Validación de choque de horario (V1.8): avisa pero no bloquea
+  // Aviso puntual al guardar por misma hora exacta (V1.8). La alarma permanente
+  // en la card (badge + borde, incluye solapes por duración) vive en detectarChoques() (V1.9).
   const choque = todasSesionesCache.some(s =>
     s.id !== sesionEditingId && s.fechaStr === fechaStr && s.hora === hora
   );
