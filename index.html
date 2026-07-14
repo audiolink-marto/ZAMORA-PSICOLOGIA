@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.9: agenda con vistas Día/Semana/Mes + alarma permanente de choque de horario en card -->
+<!-- V1.9.1: alarma de choque de horario también en cards de la vista Sesiones (historial) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -1236,9 +1236,11 @@ function renderSesionesView(){
     listEl.innerHTML = '<div class="empty-state">No hay sesiones registradas con estos filtros.</div>';
     return;
   }
+  const choques = detectarChoques(todasSesionesCache); // se calcula sobre TODAS, no solo las filtradas
   listEl.innerHTML = lista.map(s => {
     const paciente = pacientesCache[s.pacienteId] || {};
-    return `<div class="ses-card ${s.estado==='done'?'done':''}">
+    const enChoque = choques.has(s.id);
+    return `<div class="ses-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''}">
       <div class="tcol">
         <div class="thr">${s.fechaStr || '—'}</div>
         <div class="tdot ${s.estado || 'upcoming'}"></div>
@@ -1247,7 +1249,7 @@ function renderSesionesView(){
       <div class="sinfo">
         <div class="snm">${paciente.nombre || 'Paciente'}</div>
         <div class="stype">${s.nota ? s.nota.slice(0,80) : 'Sin notas'}</div>
-        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span></div>
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:10px;margin-right:3px"></i>Choque</span>':''}</div>
       </div>
       <div class="ses-actions">
         <button class="theme-toggle ses-edit-btn" data-sid="${s.id}" style="color:var(--muted); border-color:var(--brd);"><i class="ti ti-edit"></i></button>
