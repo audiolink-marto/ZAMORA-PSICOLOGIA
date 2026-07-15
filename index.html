@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.9.7: checkbox de completar con texto visible ("Completar"/"Hecha") en vista Día -->
+<!-- V1.9.11: enlace al módulo externo Pagos en el sidebar (nav-item-ext con estilo diferenciado) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -61,47 +61,69 @@ button, input{font-family:'Inter',sans-serif;}
 /* ===== LOGIN ===== */
 #login-screen{
   min-height:100vh; display:flex; align-items:center; justify-content:center;
-  background:var(--pg); padding:20px;
+  background:var(--pg); padding:20px; position:relative; overflow:hidden;
 }
-.login-card{
+/* ===== FONDO ANIMADO DEL LOGIN (V1.9.11) =====
+   Inspirado en el efecto de "bead-grid" de Liro Miyuki, adaptado a la paleta
+   propia de PsicoGestión (verde salvia / dorado) en vez de colores vivos —
+   un detalle sutil y calmado, apropiado para un consultorio. */
+.login-bg-shimmer{
+  position:absolute; inset:0; display:grid; grid-template-columns:repeat(16, 1fr);
+  gap:5px; padding:5px; z-index:0; opacity:0.16; pointer-events:none;
+}
+.shimmer-dot{
+  border-radius:50%; aspect-ratio:1;
+  animation:shimmerPg var(--d, 3s) ease-in-out infinite;
+  animation-delay:var(--delay, 0s);
+}
+@keyframes shimmerPg{
+  0%,100%{opacity:.2; transform:scale(.8);}
+  50%{opacity:1; transform:scale(1);}
+}
+.login-card{position:relative; z-index:1;
   width:100%; max-width:360px; background:var(--crd);
   border:0.5px solid var(--brd); border-radius:14px; padding:32px 28px;
 }
-.login-logo{font-size:19px; font-weight:700; color:var(--txt); text-align:center;}
-.login-sub{font-size:12.5px; color:var(--muted); text-align:center; margin-top:4px; margin-bottom:26px;}
+.login-logo{font-size:20px; font-weight:700; color:var(--txt); text-align:center;}
+.login-sub{font-size:13.5px; color:var(--muted); text-align:center; margin-top:4px; margin-bottom:26px;}
 .login-field{margin-bottom:14px;}
-.login-field label{font-size:11.5px; color:var(--muted); display:block; margin-bottom:5px;}
+.login-field label{font-size:12.5px; color:var(--muted); display:block; margin-bottom:5px;}
 .login-field input{
   width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd);
-  background:var(--pg); color:var(--txt); padding:0 12px; font-size:13.5px; outline:none;
+  background:var(--pg); color:var(--txt); padding:0 12px; font-size:14.5px; outline:none;
 }
 .login-field input:focus{border-color:var(--pri);}
 .login-field select{
   width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd);
-  background:var(--pg); color:var(--txt); padding:0 10px; font-size:13.5px; outline:none;
+  background:var(--pg); color:var(--txt); padding:0 10px; font-size:14.5px; outline:none;
   font-family:'Inter',sans-serif; cursor:pointer;
 }
 .login-field select:focus{border-color:var(--pri);}
 .login-field textarea{
   width:100%; border-radius:8px; border:0.5px solid var(--brd);
-  background:var(--pg); color:var(--txt); padding:8px 12px; font-size:13.5px; outline:none;
+  background:var(--pg); color:var(--txt); padding:8px 12px; font-size:14.5px; outline:none;
   font-family:'Inter',sans-serif; resize:vertical; min-height:60px;
 }
 .login-field textarea:focus{border-color:var(--pri);}
 .ses-actions{display:flex; gap:6px; flex-shrink:0; align-self:flex-start;}
 .ses-actions .theme-toggle{width:26px; height:26px;}
-.filter-bar{display:flex; gap:10px; margin-top:12px;}
+.filter-bar{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
 .filter-bar select{
   height:34px; border-radius:7px; border:0.5px solid var(--brd);
-  background:var(--crd); color:var(--txt); padding:0 10px; font-size:12px; outline:none;
+  background:var(--crd); color:var(--txt); padding:0 10px; font-size:13px; outline:none;
   font-family:'Inter',sans-serif; cursor:pointer;
+}
+.filter-bar input[type="text"]{
+  height:34px; border-radius:7px; border:0.5px solid var(--brd);
+  background:var(--crd); color:var(--txt); padding:0 10px; font-size:13px; outline:none;
+  font-family:'Inter',sans-serif;
 }
 .login-btn{
   width:100%; height:42px; border-radius:8px; border:none; background:var(--pri);
-  color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; margin-top:6px;
+  color:#fff; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:6px;
 }
 .login-btn:hover{opacity:.9;}
-.login-err{font-size:12px; color:var(--danger); margin-top:10px; text-align:center; min-height:16px;}
+.login-err{font-size:13px; color:var(--danger); margin-top:10px; text-align:center; min-height:16px;}
 
 /* ===== APP SHELL ===== */
 #app-screen{display:none; height:100vh; overflow:hidden;}
@@ -110,35 +132,47 @@ button, input{font-family:'Inter',sans-serif;}
 /* Sidebar */
 .sb{width:230px; background:var(--sb); display:flex; flex-direction:column; flex-shrink:0;}
 .sb-logo{padding:20px 18px 14px; border-bottom:0.5px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:flex-start;}
-.sb-logo .aname{font-size:14.5px; font-weight:600; color:#fff;}
-.sb-logo .asub{font-size:10px; color:var(--sb-txt-dim); margin-top:2px;}
+.sb-logo .aname{font-size:15.5px; font-weight:600; color:#fff;}
+.sb-logo .asub{font-size:11px; color:var(--sb-txt-dim); margin-top:2px;}
 .theme-toggle{
   width:28px; height:28px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12);
   background:transparent; color:var(--sb-txt); cursor:pointer; display:flex; align-items:center; justify-content:center;
-  font-size:14px; flex-shrink:0;
+  font-size:15px; flex-shrink:0;
 }
 .theme-toggle:hover{background:rgba(255,255,255,0.06);}
 .sb-nav{padding:10px 8px;}
 .nav-item{
   display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:7px;
-  cursor:pointer; color:var(--sb-txt); font-size:12.5px; transition:background .15s;
+  cursor:pointer; color:var(--sb-txt); font-size:13.5px; transition:background .15s;
 }
 .nav-item:hover{background:rgba(255,255,255,0.05);}
 .nav-item.active{background:rgba(74,123,111,0.22); color:#fff;}
 .nav-item.active i{color:var(--pri-on-sb);}
-.nav-item i{font-size:16px; color:rgba(255,255,255,0.35); width:18px; text-align:center;}
+.nav-item i{font-size:17px; color:rgba(255,255,255,0.35); width:18px; text-align:center;}
+
+/* ===== NAV-ITEM DE MÓDULO EXTERNO (V1.9.11) =====
+   Visualmente distinto a las vistas internas: borde punteado sutil +
+   ícono acentuado en --warm, para señalar "esto te saca de esta hoja". */
+.nav-item-ext{
+  display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px;
+  cursor:pointer; color:var(--sb-txt); font-size:13.5px; transition:background .15s;
+  border:1px dashed rgba(255,255,255,0.14); text-decoration:none;
+}
+.nav-item-ext:hover{background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.24);}
+.nav-item-ext i{font-size:16px; color:var(--warm); width:18px; text-align:center;}
+.nav-item-ext .ext-mark{margin-left:auto; font-size:12px; color:var(--sb-txt-dim);}
 .sb-pts{padding:8px 8px; flex:1; overflow-y:auto;}
-.sb-lbl{font-size:10px; color:var(--sb-txt-dim); letter-spacing:.8px; text-transform:uppercase; padding:8px 8px 6px; font-weight:500;}
+.sb-lbl{font-size:11px; color:var(--sb-txt-dim); letter-spacing:.8px; text-transform:uppercase; padding:8px 8px 6px; font-weight:500;}
 .pt-item{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; transition:background .15s;}
 .pt-item:hover{background:rgba(255,255,255,0.05);}
-.pt-av{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; flex-shrink:0; color:#fff;}
-.pt-nm{font-size:12px; color:var(--sb-txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.pt-tp{font-size:10px; color:var(--sb-txt-dim);}
-.pt-empty{font-size:11.5px; color:var(--sb-txt-dim); padding:6px 8px;}
+.pt-av{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; flex-shrink:0; color:#fff;}
+.pt-nm{font-size:13px; color:var(--sb-txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pt-tp{font-size:11px; color:var(--sb-txt-dim);}
+.pt-empty{font-size:12.5px; color:var(--sb-txt-dim); padding:6px 8px;}
 .sb-prof{padding:12px 14px; border-top:0.5px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:10px;}
-.prof-av{width:30px; height:30px; border-radius:50%; background:var(--pri); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0;}
-.prof-nm{font-size:12px; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px;}
-.prof-rl{font-size:10px; color:var(--sb-txt-dim); cursor:pointer;}
+.prof-av{width:30px; height:30px; border-radius:50%; background:var(--pri); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex-shrink:0;}
+.prof-nm{font-size:13px; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px;}
+.prof-rl{font-size:11px; color:var(--sb-txt-dim); cursor:pointer;}
 .prof-rl:hover{color:var(--sb-txt);}
 
 /* Main */
@@ -147,12 +181,12 @@ button, input{font-family:'Inter',sans-serif;}
 .view.active{display:flex;}
 
 .mhdr{padding:16px 22px 10px; border-bottom:0.5px solid var(--brd); flex-shrink:0;}
-.mdate{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px;}
-.mtitle{font-size:18px; font-weight:600; color:var(--txt); margin-top:2px;}
+.mdate{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px;}
+.mtitle{font-size:19px; font-weight:600; color:var(--txt); margin-top:2px;}
 .stats-row{display:flex; gap:8px; margin-top:12px;}
 .scard{background:var(--crd); border:0.5px solid var(--brd); border-radius:8px; padding:9px 14px; flex:1;}
-.snum{font-size:18px; font-weight:600; color:var(--txt);}
-.slbl{font-size:10px; color:var(--muted); margin-top:1px;}
+.snum{font-size:19px; font-weight:600; color:var(--txt);}
+.slbl{font-size:11px; color:var(--muted); margin-top:1px;}
 
 .sessions{flex:1; overflow-y:auto; padding:14px 22px;}
 .ses-card{
@@ -162,18 +196,18 @@ button, input{font-family:'Inter',sans-serif;}
 .ses-card:hover{border-color:var(--pri);}
 .ses-card.done{opacity:.6;}
 .tcol{text-align:center; flex-shrink:0; width:44px;}
-.thr{font-size:12.5px; font-weight:600; color:var(--txt); line-height:1;}
+.thr{font-size:13.5px; font-weight:600; color:var(--txt); line-height:1;}
 .tdot{width:8px; height:8px; border-radius:50%; margin:6px auto;}
 .tdot.done{background:var(--done);}
 .tdot.active{background:var(--pri); animation:pdot 2s ease-in-out infinite;}
 .tdot.upcoming{background:var(--warm);}
 @keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(74,123,111,.4);}50%{box-shadow:0 0 0 5px rgba(74,123,111,0);}}
-.tdur{font-size:10px; color:var(--muted);}
+.tdur{font-size:11px; color:var(--muted);}
 .sinfo{flex:1; min-width:0;}
-.snm{font-size:13.5px; font-weight:600; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.stype{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.snm{font-size:14.5px; font-weight:600; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.stype{font-size:12.5px; color:var(--muted); margin-top:2px;}
 .sbadges{display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;}
-.badge{font-size:10.5px; padding:3px 7px; border-radius:4px; font-weight:500;}
+.badge{font-size:11.5px; padding:3px 7px; border-radius:4px; font-weight:500;}
 .b-done{background:var(--done-lt); color:var(--done);}
 .b-act{background:var(--pri-lt); color:var(--pri);}
 .b-up{background:var(--warm-lt); color:var(--warm);}
@@ -182,21 +216,21 @@ button, input{font-family:'Inter',sans-serif;}
 .b-ses{background:var(--pg); color:var(--muted);}
 .b-conflict{background:var(--danger-lt); color:var(--danger);}
 .ses-card.conflict{border-color:var(--danger); box-shadow:0 0 0 1px var(--danger);}
-.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
+.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:14px;}
 
 /* ===== CHECK RÁPIDO "COMPLETADA" EN CARD (V1.9.4) ===== */
 .ses-check{flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px;
-  cursor:pointer; color:var(--muted); font-size:20px; transition:color .15s, transform .1s; padding-top:2px;}
-.ses-check span{font-size:9.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
+  cursor:pointer; color:var(--muted); font-size:21px; transition:color .15s, transform .1s; padding-top:2px;}
+.ses-check span{font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
 .ses-check:hover{color:var(--pri); transform:scale(1.05);}
 .ses-check.checked{color:var(--pri);}
 .wk-check{position:absolute; top:6px; right:6px; width:18px; height:18px; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; color:var(--muted); font-size:14px;}
+  cursor:pointer; color:var(--muted); font-size:15px;}
 .wk-check.checked{color:var(--pri);}
-.wk-remind{margin-top:4px; display:flex; align-items:center; gap:3px; font-size:9.5px; color:var(--muted); cursor:pointer;}
+.wk-remind{margin-top:4px; display:flex; align-items:center; gap:3px; font-size:10.5px; color:var(--muted); cursor:pointer;}
 .wk-remind:hover{color:var(--pri);}
 .wk-remind.sent{color:var(--pri); cursor:default;}
-.wk-remind i{font-size:11px;}
+.wk-remind i{font-size:12px;}
 .wk-card{position:relative; padding-right:24px;}
 
 /* ===== RECORDATORIOS (V1.9.5) ===== */
@@ -208,75 +242,75 @@ button, input{font-family:'Inter',sans-serif;}
   animation:slidein .2s ease;
 }
 @keyframes slidein{from{transform:translateX(20px); opacity:0;} to{transform:translateX(0); opacity:1;}}
-.reminder-banner i{color:var(--pri); font-size:18px; margin-top:1px;}
-.reminder-banner-title{font-size:12.5px; font-weight:600; color:var(--txt);}
-.reminder-banner-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
-.reminder-banner-close{margin-left:auto; cursor:pointer; color:var(--muted); font-size:14px;}
+.reminder-banner i{color:var(--pri); font-size:19px; margin-top:1px;}
+.reminder-banner-title{font-size:13.5px; font-weight:600; color:var(--txt);}
+.reminder-banner-sub{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.reminder-banner-close{margin-left:auto; cursor:pointer; color:var(--muted); font-size:15px;}
 
-.ses-remind-btn{font-size:10.5px; padding:3px 8px; border-radius:4px; font-weight:500; border:0.5px solid var(--brd);
+.ses-remind-btn{font-size:11.5px; padding:3px 8px; border-radius:4px; font-weight:500; border:0.5px solid var(--brd);
   background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; gap:4px;}
 .ses-remind-btn:hover{border-color:var(--pri); color:var(--pri);}
 .ses-remind-btn.sent{background:var(--pri-lt); color:var(--pri); border-color:transparent; cursor:default;}
 
 .rm-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:400; align-items:center; justify-content:center;}
 .rm-modal{background:var(--crd); border-radius:14px; padding:24px; width:100%; max-width:380px; margin:16px;}
-.rm-modal h3{font-size:15px; font-weight:600; color:var(--txt); margin-bottom:14px;}
+.rm-modal h3{font-size:16px; font-weight:600; color:var(--txt); margin-bottom:14px;}
 .rm-modal .login-field{margin-bottom:12px;}
 .rm-modal textarea{width:100%; min-height:90px; border-radius:8px; border:0.5px solid var(--brd); background:var(--pg);
-  color:var(--txt); padding:10px 12px; font-size:12.5px; font-family:'Inter',sans-serif; resize:vertical;}
+  color:var(--txt); padding:10px 12px; font-size:13.5px; font-family:'Inter',sans-serif; resize:vertical;}
 .rm-actions{display:flex; gap:8px; margin-top:16px;}
 .rm-actions button{flex:1;}
 
 /* ===== AGENDA: TABS DIA/SEMANA/MES (V1.9) ===== */
 .agenda-tabs{display:flex; gap:4px; margin-top:12px; background:var(--pg); border-radius:8px; padding:3px; width:fit-content;}
-.atab{font-size:12px; font-weight:500; color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; transition:all .15s;}
+.atab{font-size:13px; font-weight:500; color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; transition:all .15s;}
 .atab.active{background:var(--crd); color:var(--txt); box-shadow:0 1px 2px rgba(0,0,0,.06);}
 .agenda-subview{display:none;}
 .agenda-subview.active{display:block;}
 .awk-nav, .amo-nav{display:flex; align-items:center; justify-content:space-between; padding:12px 22px 0;}
 .awk-navbtn, .amo-navbtn{width:28px; height:28px; border-radius:6px; border:0.5px solid var(--brd); background:var(--crd); color:var(--txt); display:flex; align-items:center; justify-content:center; cursor:pointer;}
 .awk-navbtn:hover, .amo-navbtn:hover{border-color:var(--pri);}
-.awk-navlbl, .amo-navlbl{font-size:12.5px; font-weight:600; color:var(--txt); text-transform:capitalize;}
+.awk-navlbl, .amo-navlbl{font-size:13.5px; font-weight:600; color:var(--txt); text-transform:capitalize;}
 
 .week-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:8px; padding:14px 22px;}
 .week-day{min-width:0;}
-.week-daylbl{font-size:10.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; text-align:center;}
+.week-daylbl{font-size:11.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; text-align:center;}
 .week-daylbl.today{color:var(--pri);}
 .week-daycards{display:flex; flex-direction:column; gap:6px; min-height:20px;}
 .wk-card{background:var(--crd); border:0.5px solid var(--brd); border-radius:8px; padding:7px 8px; cursor:pointer; transition:border-color .15s;}
 .wk-card:hover{border-color:var(--pri);}
 .wk-card.done{opacity:.6;}
 .wk-card.conflict{border-color:var(--danger); box-shadow:0 0 0 1px var(--danger);}
-.wk-hora{font-size:11px; font-weight:600; color:var(--txt);}
-.wk-nm{font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.wk-empty{font-size:10.5px; color:var(--muted); text-align:center; padding:8px 0; opacity:.5;}
+.wk-hora{font-size:12px; font-weight:600; color:var(--txt);}
+.wk-nm{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.wk-empty{font-size:11.5px; color:var(--muted); text-align:center; padding:8px 0; opacity:.5;}
 
 .month-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:14px 22px;}
-.month-dow{font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; text-align:center; padding-bottom:4px;}
+.month-dow{font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; text-align:center; padding-bottom:4px;}
 .month-cell{background:var(--crd); border:0.5px solid var(--brd); border-radius:8px; min-height:64px; padding:6px; cursor:pointer; transition:border-color .15s;}
 .month-cell:hover{border-color:var(--pri);}
 .month-cell.empty{background:transparent; border:none; cursor:default;}
 .month-cell.today{border-color:var(--pri);}
-.month-daynum{font-size:11px; font-weight:600; color:var(--txt);}
+.month-daynum{font-size:12px; font-weight:600; color:var(--txt);}
 .month-dots{display:flex; flex-wrap:wrap; gap:2px; margin-top:5px;}
 .month-dot{width:5px; height:5px; border-radius:50%; background:var(--warm);}
 .month-dot.conflict{background:var(--danger);}
 
 /* Ficha de paciente */
 .pf-body{flex:1; overflow-y:auto; padding:20px 22px;}
-.pf-back{font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:5px; margin-bottom:16px; cursor:pointer; width:fit-content;}
+.pf-back{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px; margin-bottom:16px; cursor:pointer; width:fit-content;}
 .pf-back:hover{color:var(--txt);}
 .pf-hrow{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
-.pf-av{width:52px; height:52px; border-radius:50%; background:var(--pri); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; flex-shrink:0;}
-.pf-nm{font-size:18px; font-weight:600; color:var(--txt);}
-.pf-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+.pf-av{width:52px; height:52px; border-radius:50%; background:var(--pri); color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:700; flex-shrink:0;}
+.pf-nm{font-size:19px; font-weight:600; color:var(--txt);}
+.pf-sub{font-size:13px; color:var(--muted); margin-top:2px;}
 .pf-grid{display:grid; grid-template-columns:1fr 1.5fr; gap:16px;}
 .card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
-.ctit{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:10px;}
+.ctit{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:10px;}
 .field{margin-bottom:10px;}
 .field:last-child{margin-bottom:0;}
-.flbl{font-size:10.5px; color:var(--muted);}
-.fval{font-size:13px; color:var(--txt); margin-top:2px; line-height:1.5;}
+.flbl{font-size:11.5px; color:var(--muted);}
+.fval{font-size:14px; color:var(--txt); margin-top:2px; line-height:1.5;}
 .timeline{position:relative; padding-left:2px;}
 .tl-item{position:relative; padding-bottom:14px; border-left:1.5px solid var(--brd); padding-left:16px; margin-left:4px;}
 .tl-item:last-child{border-left:1.5px solid transparent; padding-bottom:0;}
@@ -284,12 +318,12 @@ button, input{font-family:'Inter',sans-serif;}
 .tl-dot.done{background:var(--done);}
 .tl-dot.active{background:var(--pri);}
 .tl-dot.upcoming{background:var(--warm);}
-.tl-dt{font-size:11px; color:var(--muted); font-weight:500;}
-.tl-nt{font-size:12px; color:var(--txt); margin-top:3px; line-height:1.5;}
+.tl-dt{font-size:12px; color:var(--muted); font-weight:500;}
+.tl-nt{font-size:13px; color:var(--txt); margin-top:3px; line-height:1.5;}
 
 /* Placeholder para vistas futuras */
-.wip{flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; flex-direction:column; gap:8px;}
-.wip i{font-size:28px; opacity:.5;}
+.wip{flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px; flex-direction:column; gap:8px;}
+.wip i{font-size:29px; opacity:.5;}
 
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
@@ -297,40 +331,40 @@ button, input{font-family:'Inter',sans-serif;}
 /* ===== REPORTES (V1.7) ===== */
 .rep-body{flex:1; overflow-y:auto; padding:20px 22px;}
 .rep-hdr{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;}
-.rep-title{font-size:18px; font-weight:600; color:var(--txt);}
-.rep-sub{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:2px;}
+.rep-title{font-size:19px; font-weight:600; color:var(--txt);}
+.rep-sub{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:2px;}
 .rep-export-btn{
   display:flex; align-items:center; gap:6px;
   height:36px; padding:0 16px; border-radius:8px; border:0.5px solid var(--brd);
-  background:var(--crd); color:var(--txt); font-size:12.5px; font-weight:500;
+  background:var(--crd); color:var(--txt); font-size:13.5px; font-weight:500;
   cursor:pointer; font-family:'Inter',sans-serif; transition:border-color .15s;
 }
 .rep-export-btn:hover{border-color:var(--pri); color:var(--pri);}
 .rep-cards{display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;}
 .rep-card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; flex:1; min-width:120px;}
-.rep-card-num{font-size:24px; font-weight:700; color:var(--txt); line-height:1;}
-.rep-card-lbl{font-size:10.5px; color:var(--muted); margin-top:4px;}
+.rep-card-num{font-size:25px; font-weight:700; color:var(--txt); line-height:1;}
+.rep-card-lbl{font-size:11.5px; color:var(--muted); margin-top:4px;}
 .rep-card-accent{color:var(--pri);}
 .rep-card-warn{color:var(--warm);}
 .rep-card-done{color:var(--done);}
 .rep-section{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:16px 18px; margin-bottom:14px;}
-.rep-section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:14px;}
+.rep-section-title{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:14px;}
 .rep-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
 .rep-bar-row:last-child{margin-bottom:0;}
-.rep-bar-lbl{font-size:12px; color:var(--txt); width:100px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rep-bar-lbl{font-size:13px; color:var(--txt); width:100px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .rep-bar-track{flex:1; background:var(--pg); border-radius:4px; height:10px; overflow:hidden;}
 .rep-bar-fill{height:100%; border-radius:4px; background:var(--pri); transition:width .4s ease;}
 .rep-bar-fill.warm{background:var(--warm);}
 .rep-bar-fill.done{background:var(--done);}
-.rep-bar-val{font-size:11.5px; color:var(--muted); width:28px; text-align:right; flex-shrink:0;}
+.rep-bar-val{font-size:12.5px; color:var(--muted); width:28px; text-align:right; flex-shrink:0;}
 .rep-mod-row{display:flex; gap:14px; align-items:center;}
 .rep-mod-bar{flex:1; height:14px; border-radius:7px; overflow:hidden; display:flex;}
 .rep-mod-virt{background:var(--virt-txt); height:100%; transition:width .4s ease;}
 .rep-mod-pres{background:var(--warm); height:100%; transition:width .4s ease;}
 .rep-mod-legend{display:flex; gap:16px; margin-top:10px;}
 .rep-mod-dot{width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:2px;}
-.rep-mod-item{display:flex; align-items:flex-start; gap:6px; font-size:12px; color:var(--txt);}
-.rep-empty{font-size:12.5px; color:var(--muted); text-align:center; padding:20px 0;}
+.rep-mod-item{display:flex; align-items:flex-start; gap:6px; font-size:13px; color:var(--txt);}
+.rep-empty{font-size:13.5px; color:var(--muted); text-align:center; padding:20px 0;}
 @media (max-width:768px){
   .rep-body{padding:12px 16px;}
   .rep-cards{gap:6px;}
@@ -345,15 +379,15 @@ button, input{font-family:'Inter',sans-serif;}
 .pf-del-btn:hover{background:var(--danger-lt) !important;}
 
 /* ===== RECUPERAR CONTRASEÑA (V1.8) ===== */
-.login-fpwd{font-size:11.5px; color:var(--pri); text-align:center; margin-top:12px; cursor:pointer;}
+.login-fpwd{font-size:12.5px; color:var(--pri); text-align:center; margin-top:12px; cursor:pointer;}
 .login-fpwd:hover{text-decoration:underline;}
-.login-ok{font-size:12px; color:var(--pri); margin-top:10px; text-align:center; min-height:16px;}
+.login-ok{font-size:13px; color:var(--pri); margin-top:10px; text-align:center; min-height:16px;}
 
 /* ===== BUSCADOR PACIENTES (V1.8) ===== */
 .sb-search{padding:0 8px 8px;}
 .sb-search input{
   width:100%; height:32px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12);
-  background:rgba(255,255,255,0.05); color:#fff; padding:0 10px; font-size:11.5px; outline:none;
+  background:rgba(255,255,255,0.05); color:#fff; padding:0 10px; font-size:12.5px; outline:none;
   font-family:'Inter',sans-serif;
 }
 .sb-search input::placeholder{color:var(--sb-txt-dim);}
@@ -361,12 +395,12 @@ button, input{font-family:'Inter',sans-serif;}
 .pac-search{margin:0 0 14px;}
 .pac-search input{
   width:100%; height:38px; border-radius:8px; border:0.5px solid var(--brd);
-  background:var(--crd); color:var(--txt); padding:0 12px 0 34px; font-size:13px; outline:none;
+  background:var(--crd); color:var(--txt); padding:0 12px 0 34px; font-size:14px; outline:none;
   font-family:'Inter',sans-serif;
 }
 .pac-search input:focus{border-color:var(--pri);}
 .pac-search-wrap{position:relative;}
-.pac-search-wrap i{position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:15px;}
+.pac-search-wrap i{position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:16px;}
 
 /* ===== TOAST (V1.8) ===== */
 #toast-container{
@@ -374,13 +408,13 @@ button, input{font-family:'Inter',sans-serif;}
   display:flex; flex-direction:column; gap:8px; align-items:flex-end;
 }
 .toast{
-  background:var(--sb); color:#fff; font-size:12.5px; padding:11px 16px;
+  background:var(--sb); color:#fff; font-size:13.5px; padding:11px 16px;
   border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2);
   display:flex; align-items:center; gap:8px; max-width:300px;
   opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease;
 }
 .toast.show{opacity:1; transform:translateY(0);}
-.toast i{font-size:15px; flex-shrink:0;}
+.toast i{font-size:16px; flex-shrink:0;}
 .toast.t-ok i{color:var(--pri-on-sb);}
 .toast.t-warn i{color:var(--warm);}
 .toast.t-err i{color:var(--danger);}
@@ -400,7 +434,7 @@ button, input{font-family:'Inter',sans-serif;}
     display:flex; align-items:center; justify-content:space-between;
     padding:12px 16px; background:var(--sb); flex-shrink:0;
   }
-  .mobile-topbar .aname{font-size:14px; font-weight:600; color:#fff;}
+  .mobile-topbar .aname{font-size:15px; font-weight:600; color:#fff;}
   .mobile-topbar-actions{display:flex; gap:8px;}
   .main{padding-bottom:58px;}
   .mobile-bottomnav{
@@ -409,9 +443,9 @@ button, input{font-family:'Inter',sans-serif;}
   }
   .mobile-bottomnav .nav-item{
     flex:1; flex-direction:column; gap:2px; justify-content:center; align-items:center;
-    border-radius:0; font-size:9.5px; padding:6px 4px; margin:0;
+    border-radius:0; font-size:10.5px; padding:6px 4px; margin:0;
   }
-  .mobile-bottomnav .nav-item i{font-size:18px; width:auto;}
+  .mobile-bottomnav .nav-item i{font-size:19px; width:auto;}
   .mobile-bottomnav .nav-item.active{background:transparent;}
   .pf-grid{grid-template-columns:1fr;}
   .mhdr{padding:14px 16px 8px;}
@@ -422,22 +456,22 @@ button, input{font-family:'Inter',sans-serif;}
   .week-daylbl{text-align:left;}
   .month-grid{padding:10px 16px; gap:4px;}
   .month-cell{min-height:44px; padding:4px;}
-  .month-dow{font-size:9px;}
+  .month-dow{font-size:10px;}
   .awk-nav, .amo-nav{padding:10px 16px 0;}
   /* Letra más grande en cards de sesión para móvil (V1.9.6) */
-  .thr{font-size:14px;}
-  .tdur{font-size:11.5px;}
-  .snm{font-size:15px;}
-  .stype{font-size:13px;}
-  .badge{font-size:11.5px; padding:4px 8px;}
-  .ses-remind-btn{font-size:11.5px; padding:4px 9px;}
-  .wk-hora{font-size:12.5px;}
-  .wk-nm{font-size:12.5px;}
-  .tl-dt{font-size:12.5px;}
-  .tl-nt{font-size:13.5px;}
-  .wk-remind{font-size:11px;}
-  .ses-check{font-size:22px;}
-  .ses-check span{font-size:10.5px;}
+  .thr{font-size:15px;}
+  .tdur{font-size:12.5px;}
+  .snm{font-size:16px;}
+  .stype{font-size:14px;}
+  .badge{font-size:12.5px; padding:4px 8px;}
+  .ses-remind-btn{font-size:12.5px; padding:4px 9px;}
+  .wk-hora{font-size:13.5px;}
+  .wk-nm{font-size:13.5px;}
+  .tl-dt{font-size:13.5px;}
+  .tl-nt{font-size:14.5px;}
+  .wk-remind{font-size:12px;}
+  .ses-check{font-size:23px;}
+  .ses-check span{font-size:11.5px;}
 }
 </style>
 </head>
@@ -445,6 +479,7 @@ button, input{font-family:'Inter',sans-serif;}
 
 <!-- ===== LOGIN ===== -->
 <div id="login-screen">
+  <div class="login-bg-shimmer" id="login-bg-shimmer"></div>
   <div class="login-card">
     <div class="login-logo">PsicoGestión</div>
     <div class="login-sub">Acceso al consultorio</div>
@@ -467,10 +502,10 @@ button, input{font-family:'Inter',sans-serif;}
   <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
     <div style="width:100%; max-width:360px; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <div style="font-size:15px; font-weight:600;">Recuperar contraseña</div>
-        <span style="cursor:pointer; color:var(--muted); font-size:16px;" id="reset-modal-close"><i class="ti ti-x"></i></span>
+        <div style="font-size:16px; font-weight:600;">Recuperar contraseña</div>
+        <span style="cursor:pointer; color:var(--muted); font-size:17px;" id="reset-modal-close"><i class="ti ti-x"></i></span>
       </div>
-      <div style="font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:14px;">
+      <div style="font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:14px;">
         Escribe tu correo y te enviaremos un enlace para restablecer tu contraseña.
       </div>
       <div class="login-field"><label>Correo</label><input type="email" id="reset-email" placeholder="nombre@correo.com"></div>
@@ -508,9 +543,16 @@ button, input{font-family:'Inter',sans-serif;}
         <div class="nav-item" data-view="sesiones"><i class="ti ti-notes"></i>Sesiones</div>
         <div class="nav-item" data-view="reportes"><i class="ti ti-chart-bar"></i>Reportes</div>
       </div>
+      <div style="padding:10px 8px 0;">
+        <div class="sb-lbl" style="padding-left:2px;">Módulos</div>
+        <a class="nav-item-ext" href="pagos.html">
+          <i class="ti ti-wallet"></i>Pagos
+          <span class="ext-mark"><i class="ti ti-external-link"></i></span>
+        </a>
+      </div>
       <div class="sb-pts">
         <div class="sb-lbl">Pacientes activos</div>
-        <div class="sb-search"><input type="text" id="sb-buscador" placeholder="Buscar paciente..."></div>
+        <div class="sb-search"><input type="text" id="sb-buscador" placeholder="Buscar paciente... ( / )"></div>
         <div id="sb-pacientes-list"><div class="pt-empty">Cargando...</div></div>
       </div>
       <div class="sb-prof">
@@ -612,7 +654,7 @@ button, input{font-family:'Inter',sans-serif;}
             <div class="mtitle">Pacientes</div>
           </div>
           <button class="login-btn" id="btn-nuevo-paciente" style="width:auto; padding:0 16px; height:36px; margin-top:0;">
-            <i class="ti ti-plus" style="font-size:14px; vertical-align:-2px; margin-right:5px;"></i>Nuevo paciente
+            <i class="ti ti-plus" style="font-size:15px; vertical-align:-2px; margin-right:5px;"></i>Nuevo paciente
           </button>
         </div>
         <div class="mhdr" style="border-bottom:none; padding-top:0;">
@@ -637,11 +679,13 @@ button, input{font-family:'Inter',sans-serif;}
                 <option value="done">Completadas</option>
                 <option value="active">En curso</option>
                 <option value="upcoming">Próximas</option>
+                <option value="trash">🗑 Papelera</option>
               </select>
+              <input type="text" id="ses-filter-nota" placeholder="Buscar en notas..." style="min-width:180px;">
             </div>
           </div>
-          <button class="login-btn" id="btn-nueva-sesion" style="width:auto; padding:0 16px; height:36px; margin-top:0;">
-            <i class="ti ti-plus" style="font-size:14px; vertical-align:-2px; margin-right:5px;"></i>Nueva sesión
+          <button class="login-btn" id="btn-nueva-sesion" style="width:auto; padding:0 16px; height:36px; margin-top:0;" title="Atajo: N">
+            <i class="ti ti-plus" style="font-size:15px; vertical-align:-2px; margin-right:5px;"></i>Nueva sesión
           </button>
         </div>
         <div class="sessions" id="sesiones-list">
@@ -656,7 +700,7 @@ button, input{font-family:'Inter',sans-serif;}
               <div class="rep-title">Reportes</div>
             </div>
             <button class="rep-export-btn" id="btn-exportar-reporte">
-              <i class="ti ti-printer" style="font-size:15px;"></i>Exportar PDF
+              <i class="ti ti-printer" style="font-size:16px;"></i>Exportar PDF
             </button>
           </div>
 
@@ -714,8 +758,8 @@ button, input{font-family:'Inter',sans-serif;}
     <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
       <div style="width:100%; max-width:420px; max-height:88vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-          <div style="font-size:15px; font-weight:600;" id="modal-title">Nuevo paciente</div>
-          <span style="cursor:pointer; color:var(--muted); font-size:16px;" id="modal-close"><i class="ti ti-x"></i></span>
+          <div style="font-size:16px; font-weight:600;" id="modal-title">Nuevo paciente</div>
+          <span style="cursor:pointer; color:var(--muted); font-size:17px;" id="modal-close"><i class="ti ti-x"></i></span>
         </div>
 
         <div class="login-field"><label>Nombre completo</label><input type="text" id="f-nombre" placeholder="Ana Sofía Restrepo"></div>
@@ -729,7 +773,7 @@ button, input{font-family:'Inter',sans-serif;}
         <div class="login-field"><label>Motivo de consulta</label><input type="text" id="f-motivo" placeholder="Breve descripción del motivo"></div>
         <div class="login-field" style="display:flex; align-items:center; gap:8px;">
           <input type="checkbox" id="f-activo" checked style="width:auto; height:auto;">
-          <label style="margin:0; font-size:12.5px; color:var(--txt);">Paciente activo</label>
+          <label style="margin:0; font-size:13.5px; color:var(--txt);">Paciente activo</label>
         </div>
 
         <div class="login-err" id="modal-err"></div>
@@ -746,11 +790,11 @@ button, input{font-family:'Inter',sans-serif;}
   <div id="confirm-overlay" style="display:none; position:relative; z-index:60;">
     <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
       <div style="width:100%; max-width:380px; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
-        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">Eliminar paciente</div>
-        <div style="font-size:12.5px; color:var(--muted); line-height:1.5; margin-bottom:6px;">
+        <div style="font-size:16px; font-weight:600; margin-bottom:8px;">Eliminar paciente</div>
+        <div style="font-size:13.5px; color:var(--muted); line-height:1.5; margin-bottom:6px;">
           Esta acción eliminará a <strong id="confirm-pname">—</strong> y <strong id="confirm-scount">0</strong> sesión(es) asociada(s) de forma permanente. No se puede deshacer.
         </div>
-        <div style="font-size:11.5px; color:var(--danger); margin-bottom:16px;">Te recomendamos exportar su información antes de continuar.</div>
+        <div style="font-size:12.5px; color:var(--danger); margin-bottom:16px;">Te recomendamos exportar su información antes de continuar.</div>
         <button class="login-btn" id="confirm-export" style="background:var(--crd); color:var(--txt); border:0.5px solid var(--brd); margin-top:0; margin-bottom:8px;">
           <i class="ti ti-printer" style="margin-right:6px;"></i>Ver ficha imprimible (PDF)
         </button>
@@ -768,8 +812,8 @@ button, input{font-family:'Inter',sans-serif;}
     <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
       <div style="width:100%; max-width:420px; max-height:88vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-          <div style="font-size:15px; font-weight:600;" id="sesion-modal-title">Nueva sesión</div>
-          <span style="cursor:pointer; color:var(--muted); font-size:16px;" id="sesion-modal-close"><i class="ti ti-x"></i></span>
+          <div style="font-size:16px; font-weight:600;" id="sesion-modal-title">Nueva sesión</div>
+          <span style="cursor:pointer; color:var(--muted); font-size:17px;" id="sesion-modal-close"><i class="ti ti-x"></i></span>
         </div>
 
         <div class="login-field"><label>Paciente</label>
@@ -780,8 +824,20 @@ button, input{font-family:'Inter',sans-serif;}
           <div class="login-field" style="flex:1;"><label>Hora</label><input type="time" id="sf-hora"></div>
         </div>
         <div style="display:flex; gap:10px;">
-          <div class="login-field" style="flex:1;"><label>Duración</label><input type="text" id="sf-duracion" placeholder="50 min"></div>
+          <div class="login-field" style="flex:1;"><label>Duración</label>
+            <select id="sf-duracion">
+              <option value="30 min">30 min</option>
+              <option value="45 min">45 min</option>
+              <option value="50 min">50 min</option>
+              <option value="60 min">60 min</option>
+              <option value="90 min">90 min</option>
+              <option value="otra">Otra...</option>
+            </select>
+          </div>
           <div class="login-field" style="flex:1;"><label># Sesión</label><input type="number" id="sf-numero" placeholder="1" min="1"></div>
+        </div>
+        <div class="login-field" id="sf-duracion-otra-wrap" style="display:none;">
+          <label>Especifica la duración</label><input type="text" id="sf-duracion-otra" placeholder="ej. 40 min">
         </div>
         <div style="display:flex; gap:10px;">
           <div class="login-field" style="flex:1;"><label>Modalidad</label>
@@ -792,6 +848,13 @@ button, input{font-family:'Inter',sans-serif;}
           </div>
         </div>
         <div class="login-field"><label>Nota</label><textarea id="sf-nota" placeholder="Notas de la sesión (opcional)"></textarea></div>
+
+        <div class="login-field" id="sf-repetir-wrap" style="display:flex; align-items:center; gap:8px; background:var(--pg); padding:10px 12px; border-radius:8px;">
+          <input type="checkbox" id="sf-repetir" style="width:auto; margin:0;">
+          <label for="sf-repetir" style="margin:0; cursor:pointer; flex-shrink:0;">Repetir cada semana, </label>
+          <input type="number" id="sf-repeticiones" value="4" min="2" max="52" style="width:56px; height:30px; padding:0 6px;">
+          <span style="font-size:13px; color:var(--muted);">veces</span>
+        </div>
 
         <div class="login-err" id="sesion-modal-err"></div>
 
@@ -832,7 +895,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs,
-  addDoc, updateDoc, deleteDoc, writeBatch
+  addDoc, updateDoc, deleteDoc, writeBatch, enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 /* ============================================
@@ -846,9 +909,45 @@ const firebaseConfig = {
   messagingSenderId: "1018710047961",
   appId: "1:1018710047961:web:bc619e40b828d35347d2c8"
 };
+/* ===== FONDO ANIMADO DEL LOGIN (V1.9.11) =====
+   Usa variables CSS del tema (var(--pri), etc.) en vez de colores fijos,
+   así se adapta solo al cambiar entre claro/oscuro. */
+(function generarFondoLogin(){
+  const cont = document.getElementById('login-bg-shimmer');
+  if(!cont) return;
+  const colores = ['var(--pri)','var(--pri-on-sb)','var(--warm)','var(--muted)','var(--brd)'];
+  for(let i = 0; i < 160; i++){
+    const d = document.createElement('div');
+    d.className = 'shimmer-dot';
+    d.style.backgroundColor = colores[Math.floor(Math.random()*colores.length)];
+    d.style.setProperty('--d', (2 + Math.random()*3) + 's');
+    d.style.setProperty('--delay', (Math.random()*3) + 's');
+    cont.appendChild(d);
+  }
+})();
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+/* ===== MODO OFFLINE (V1.9.10) =====
+   Guarda una copia local (IndexedDB) de lo último leído, así que si se corta el
+   internet a mitad de una sesión, puedes seguir viendo y anotando: los cambios
+   quedan en cola y se sincronizan solos cuando vuelve la conexión.
+   Solo funciona en UNA pestaña/ventana abierta a la vez con la misma cuenta;
+   si detecta otra pestaña abierta, avisa en consola y sigue funcionando en modo
+   normal (sin offline) en esa pestaña extra — no rompe nada, solo pierde el offline ahí. */
+try{
+  await enableIndexedDbPersistence(db);
+} catch(err){
+  if(err.code === 'failed-precondition'){
+    console.warn('Modo offline no disponible: hay otra pestaña de PsicoGestión abierta.');
+  } else if(err.code === 'unimplemented'){
+    console.warn('Este navegador no soporta el modo offline.');
+  } else {
+    console.warn('No se pudo activar el modo offline:', err);
+  }
+}
 
 /* ===== IDENTIDAD DEL CONSULTORIO (reutilizable en PDFs/impresos) ===== */
 const NOMBRE_CONSULTORIO = "ZAMORA PSICOLOGÍA";
@@ -977,6 +1076,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
     showView('view-' + item.dataset.view);
+    if(item.dataset.view === 'sesiones' || item.dataset.view === 'reportes') iniciarHistorialSiHaceFalta();
   });
 });
 function showView(id){
@@ -1020,8 +1120,8 @@ function startListeners(){
     sesionesCache = [];
     snap.forEach(docSnap => {
       const s = docSnap.data();
-      // Filtra por fecha de hoy si el campo "fechaStr" existe (formato YYYY-MM-DD)
-      if(!s.fechaStr || s.fechaStr === todayStr){
+      // Filtra por fecha de hoy si el campo "fechaStr" existe (formato YYYY-MM-DD), y excluye la papelera (V1.9.10)
+      if((!s.fechaStr || s.fechaStr === todayStr) && !s.eliminada){
         sesionesCache.push({ id: docSnap.id, ...s });
       }
     });
@@ -1031,7 +1131,25 @@ function startListeners(){
     document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error al cargar la agenda.</div>';
   });
 
-  // Historial completo de sesiones (vista "Sesiones")
+  // Historial completo de sesiones (vista "Sesiones", Semana, Mes, Reportes, Ficha)
+  // V1.9.8: se deja de cargar siempre desde el login. Se activa la primera vez que
+  // hace falta, con iniciarHistorialSiHaceFalta(). Así el login/agenda del día,
+  // que es lo que más se usa, no descarga años de historial que no necesita.
+}
+
+/* ===== HISTORIAL COMPLETO: CARGA DIFERIDA (LAZY) — V1.9.8 =====
+   Solo arranca la lectura de TODAS las sesiones la primera vez que se necesita
+   (Semana, Mes, Sesiones, Reportes o abrir una ficha). Antes de eso, todasSesionesCache
+   queda vacío y esas vistas muestran su estado de carga hasta que llegan los datos.
+   Nota sobre índices de Firestore: esta consulta usa un solo orderBy('fechaStr'),
+   lo cual NO necesita índice compuesto. Si en el futuro se agrega un where() combinado
+   con orderBy sobre otro campo (ej. filtrar por paciente Y ordenar por fecha a la vez),
+   Firestore puede pedir crear un índice compuesto — te lo avisa con un error en la
+   consola del navegador que incluye un link directo para crearlo en un clic. */
+let historialIniciado = false;
+function iniciarHistorialSiHaceFalta(){
+  if(historialIniciado) return;
+  historialIniciado = true;
   const todasSesionesQ = query(collection(db, 'sesiones'), orderBy('fechaStr', 'desc'));
   onSnapshot(todasSesionesQ, (snap) => {
     todasSesionesCache = [];
@@ -1039,11 +1157,10 @@ function startListeners(){
       todasSesionesCache.push({ id: docSnap.id, ...docSnap.data() });
     });
     renderSesionesView();
-    // Refresca semana/mes si están visibles (V1.9)
     if(document.getElementById('agenda-sub-semana').classList.contains('active')) renderWeekView();
     if(document.getElementById('agenda-sub-mes').classList.contains('active')) renderMonthView();
-    // Refresca la ficha abierta si hay una (V1.9.3, timeline completa)
     if(fichaActualId && document.getElementById('view-ficha').classList.contains('active')) openFicha(fichaActualId);
+    if(document.getElementById('view-reportes').classList.contains('active')) renderReportes();
   }, (err) => {
     console.error('Error cargando historial de sesiones:', err);
     document.getElementById('sesiones-list').innerHTML = '<div class="empty-state">Error al cargar el historial.</div>';
@@ -1087,8 +1204,8 @@ function bstat(s){
 }
 function bmod(m){
   return m==='virtual'
-    ? '<span class="badge b-virt"><i class="ti ti-video" style="font-size:10px;margin-right:3px"></i>Virtual</span>'
-    : '<span class="badge b-pres"><i class="ti ti-building" style="font-size:10px;margin-right:3px"></i>Presencial</span>';
+    ? '<span class="badge b-virt"><i class="ti ti-video" style="font-size:11px;margin-right:3px"></i>Virtual</span>'
+    : '<span class="badge b-pres"><i class="ti ti-building" style="font-size:11px;margin-right:3px"></i>Presencial</span>';
 }
 
 /* ===== DETECCIÓN DE CHOQUES DE HORARIO (V1.9) =====
@@ -1306,7 +1423,7 @@ function renderSessions(){
       <div class="sinfo">
         <div class="snm">${paciente.nombre || 'Paciente'}</div>
         <div class="stype">${paciente.tipoTerapia || ''}</div>
-        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:10px;margin-right:3px"></i>Choque</span>':''}
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:11px;margin-right:3px"></i>Choque</span>':''}
           <button class="ses-remind-btn ${s.recordatorioEnviado?'sent':''}" data-sid="${s.id}" data-pid="${s.pacienteId}">
             <i class="ti ${s.recordatorioEnviado?'ti-circle-check':'ti-mail'}"></i>${s.recordatorioEnviado?'Enviado':'Recordatorio'}
           </button>
@@ -1351,8 +1468,8 @@ document.querySelectorAll('.atab').forEach(tab => {
     tab.classList.add('active');
     document.querySelectorAll('.agenda-subview').forEach(v => v.classList.remove('active'));
     document.getElementById('agenda-sub-' + tab.dataset.atab).classList.add('active');
-    if(tab.dataset.atab === 'semana') renderWeekView();
-    if(tab.dataset.atab === 'mes') renderMonthView();
+    if(tab.dataset.atab === 'semana'){ iniciarHistorialSiHaceFalta(); renderWeekView(); }
+    if(tab.dataset.atab === 'mes'){ iniciarHistorialSiHaceFalta(); renderMonthView(); }
   });
 });
 
@@ -1383,7 +1500,7 @@ function renderWeekView(){
     `${dias[0].toLocaleDateString('es-CO',{day:'numeric',month:'short'})} — ${fin.toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'})}`;
 
   const todayStr = fechaStrLocal(new Date());
-  const sesionesSemana = todasSesionesCache.filter(s => dias.some(d => fechaStrLocal(d) === s.fechaStr));
+  const sesionesSemana = todasSesionesCache.filter(s => !s.eliminada && dias.some(d => fechaStrLocal(d) === s.fechaStr));
   const choques = detectarChoques(sesionesSemana);
 
   gridEl.innerHTML = dias.map(d => {
@@ -1399,7 +1516,7 @@ function renderWeekView(){
             <div class="wk-check ${completada?'checked':''}" data-sid="${s.id}" data-estado="${s.estado||'upcoming'}" title="${completada?'Marcar como pendiente':'Marcar como completada'}">
               <i class="ti ${completada?'ti-circle-check-filled':'ti-circle'}"></i>
             </div>
-            <div class="wk-hora">${s.hora||'--:--'}${enChoque?' <i class="ti ti-alert-triangle" style="color:var(--danger);font-size:10px"></i>':''}</div>
+            <div class="wk-hora">${s.hora||'--:--'}${enChoque?' <i class="ti ti-alert-triangle" style="color:var(--danger);font-size:11px"></i>':''}</div>
             <div class="wk-nm">${paciente.nombre || 'Paciente'}</div>
             <div class="wk-remind ${s.recordatorioEnviado?'sent':''}" data-sid="${s.id}" data-pid="${s.pacienteId}" title="${s.recordatorioEnviado?'Recordatorio enviado':'Enviar recordatorio'}">
               <i class="ti ${s.recordatorioEnviado?'ti-circle-check':'ti-mail'}"></i>
@@ -1445,7 +1562,7 @@ function renderMonthView(){
   const inicioOffset = primerDia.getDay() === 0 ? 6 : primerDia.getDay()-1; // lunes=0
 
   const sesionesMes = todasSesionesCache.filter(s => {
-    if(!s.fechaStr) return false;
+    if(!s.fechaStr || s.eliminada) return false;
     const [y,m] = s.fechaStr.split('-').map(Number);
     return y === mesActual.getFullYear() && m === mesActual.getMonth()+1;
   });
@@ -1507,19 +1624,34 @@ function renderSesionesView(){
   if(!listEl) return;
   const fPaciente = document.getElementById('ses-filter-paciente').value;
   const fEstado = document.getElementById('ses-filter-estado').value;
-  let lista = todasSesionesCache;
-  if(fPaciente) lista = lista.filter(s => s.pacienteId === fPaciente);
-  if(fEstado) lista = lista.filter(s => s.estado === fEstado);
+  const fNota = (document.getElementById('ses-filter-nota').value || '').trim().toLowerCase();
+  const modoPapelera = fEstado === 'trash';
+
+  let lista;
+  if(modoPapelera){
+    lista = todasSesionesCache.filter(s => s.eliminada === true);
+  } else {
+    lista = todasSesionesCache.filter(s => !s.eliminada); // V1.9.10: la papelera nunca se mezcla con el resto
+    if(fPaciente) lista = lista.filter(s => s.pacienteId === fPaciente);
+    if(fEstado) lista = lista.filter(s => s.estado === fEstado);
+  }
+  if(fNota) lista = lista.filter(s => (s.nota || '').toLowerCase().includes(fNota));
 
   if(lista.length === 0){
-    listEl.innerHTML = '<div class="empty-state">No hay sesiones registradas con estos filtros.</div>';
+    listEl.innerHTML = `<div class="empty-state">${modoPapelera ? 'La papelera está vacía.' : (fNota ? 'Ninguna nota contiene "' + fNota + '".' : 'No hay sesiones registradas con estos filtros.')}</div>`;
     return;
   }
-  const choques = detectarChoques(todasSesionesCache); // se calcula sobre TODAS, no solo las filtradas
+  const choques = detectarChoques(todasSesionesCache.filter(s => !s.eliminada)); // la papelera no cuenta para choques
   listEl.innerHTML = lista.map(s => {
     const paciente = pacientesCache[s.pacienteId] || {};
     const enChoque = choques.has(s.id);
-    return `<div class="ses-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''}">
+    const acciones = modoPapelera
+      ? `<button class="theme-toggle ses-restore-btn" data-sid="${s.id}" style="color:var(--pri); border-color:var(--brd);" title="Restaurar sesión"><i class="ti ti-arrow-back-up"></i></button>
+         <button class="theme-toggle ses-purge-btn" data-sid="${s.id}" title="Eliminar definitivamente"><i class="ti ti-trash-x"></i></button>`
+      : `<button class="theme-toggle ses-dup-btn" data-sid="${s.id}" style="color:var(--muted); border-color:var(--brd);" title="Duplicar sesión (útil para pacientes semanales)"><i class="ti ti-copy"></i></button>
+         <button class="theme-toggle ses-edit-btn" data-sid="${s.id}" style="color:var(--muted); border-color:var(--brd);"><i class="ti ti-edit"></i></button>
+         <button class="theme-toggle ses-del-btn" data-sid="${s.id}"><i class="ti ti-trash"></i></button>`;
+    return `<div class="ses-card ${s.estado==='done'?'done':''} ${enChoque?'conflict':''} ${modoPapelera?'done':''}">
       <div class="tcol">
         <div class="thr">${s.fechaStr || '—'}</div>
         <div class="tdot ${s.estado || 'upcoming'}"></div>
@@ -1527,49 +1659,97 @@ function renderSesionesView(){
       </div>
       <div class="sinfo">
         <div class="snm">${paciente.nombre || 'Paciente'}</div>
-        <div class="stype">${s.nota ? s.nota.slice(0,80) : 'Sin notas'}</div>
-        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:10px;margin-right:3px"></i>Choque</span>':''}</div>
+        <div class="stype">${modoPapelera ? 'Eliminada el ' + (s.eliminadaFecha ? s.eliminadaFecha.slice(0,10) : '—') : (s.nota ? s.nota.slice(0,80) : 'Sin notas')}</div>
+        <div class="sbadges">${bstat(s.estado)}${bmod(s.modalidad)}<span class="badge b-ses">Ses. ${s.numeroSesion || '-'}</span>${enChoque?'<span class="badge b-conflict"><i class="ti ti-alert-triangle" style="font-size:11px;margin-right:3px"></i>Choque</span>':''}</div>
       </div>
-      <div class="ses-actions">
-        <button class="theme-toggle ses-edit-btn" data-sid="${s.id}" style="color:var(--muted); border-color:var(--brd);"><i class="ti ti-edit"></i></button>
-        <button class="theme-toggle ses-del-btn" data-sid="${s.id}"><i class="ti ti-trash"></i></button>
-      </div>
+      <div class="ses-actions">${acciones}</div>
     </div>`;
   }).join('');
+  listEl.querySelectorAll('.ses-dup-btn').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); duplicarSesion(el.dataset.sid); });
+  });
   listEl.querySelectorAll('.ses-edit-btn').forEach(el => {
     el.addEventListener('click', (e) => { e.stopPropagation(); openSesionModal(el.dataset.sid); });
   });
   listEl.querySelectorAll('.ses-del-btn').forEach(el => {
     el.addEventListener('click', (e) => { e.stopPropagation(); eliminarSesion(el.dataset.sid); });
   });
+  listEl.querySelectorAll('.ses-restore-btn').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); restaurarSesion(el.dataset.sid); });
+  });
+  listEl.querySelectorAll('.ses-purge-btn').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); eliminarSesionDefinitivo(el.dataset.sid); });
+  });
 }
 document.getElementById('ses-filter-paciente').addEventListener('change', renderSesionesView);
 document.getElementById('ses-filter-estado').addEventListener('change', renderSesionesView);
+document.getElementById('ses-filter-nota').addEventListener('input', renderSesionesView);
 
 /* ===== MODAL NUEVA / EDITAR SESIÓN ===== */
 const sesionModalOverlay = document.getElementById('sesion-modal-overlay');
-function openSesionModal(sid){
+const DURACIONES_ESTANDAR = ['30 min','45 min','50 min','60 min','90 min'];
+function setDuracionField(valor){
+  const sel = document.getElementById('sf-duracion');
+  const wrap = document.getElementById('sf-duracion-otra-wrap');
+  const otra = document.getElementById('sf-duracion-otra');
+  if(valor && DURACIONES_ESTANDAR.includes(valor)){
+    sel.value = valor;
+    wrap.style.display = 'none';
+    otra.value = '';
+  } else if(valor){
+    // Dato existente con formato libre (ej. "1h", "cincuenta") — se respeta tal cual (V1.9.10)
+    sel.value = 'otra';
+    wrap.style.display = 'block';
+    otra.value = valor;
+  } else {
+    sel.value = '50 min';
+    wrap.style.display = 'none';
+    otra.value = '';
+  }
+}
+document.getElementById('sf-duracion').addEventListener('change', (e) => {
+  document.getElementById('sf-duracion-otra-wrap').style.display = e.target.value === 'otra' ? 'block' : 'none';
+});
+function openSesionModal(sid, prefill){
   sesionEditingId = sid || null;
   document.getElementById('sesion-modal-err').textContent = '';
+  iniciarHistorialSiHaceFalta();
   poblarSelectsPaciente();
+  const repetirWrap = document.getElementById('sf-repetir-wrap');
+  document.getElementById('sf-repetir').checked = false;
+  document.getElementById('sf-repeticiones').value = 4;
   if(sid){
     const s = todasSesionesCache.find(x => x.id === sid);
     if(!s) return;
+    repetirWrap.style.display = 'none'; // no aplica al editar una ya existente
     document.getElementById('sesion-modal-title').textContent = 'Editar sesión';
     document.getElementById('sf-paciente').value = s.pacienteId || '';
     document.getElementById('sf-fecha').value = s.fechaStr || '';
     document.getElementById('sf-hora').value = s.hora || '';
-    document.getElementById('sf-duracion').value = s.duracion || '';
+    setDuracionField(s.duracion);
     document.getElementById('sf-numero').value = s.numeroSesion || '';
     document.getElementById('sf-modalidad').value = s.modalidad || 'presencial';
     document.getElementById('sf-estado').value = s.estado || 'upcoming';
     document.getElementById('sf-nota').value = s.nota || '';
+  } else if(prefill){
+    // V1.9.9: duplicar sesión — copia los datos pero deja fecha/nota para que el usuario ajuste
+    repetirWrap.style.display = 'flex';
+    document.getElementById('sesion-modal-title').textContent = 'Nueva sesión (duplicada)';
+    document.getElementById('sf-paciente').value = prefill.pacienteId || '';
+    document.getElementById('sf-fecha').value = prefill.fechaStr || new Date().toISOString().slice(0,10);
+    document.getElementById('sf-hora').value = prefill.hora || '';
+    setDuracionField(prefill.duracion || '50 min');
+    document.getElementById('sf-numero').value = prefill.numeroSesion ? prefill.numeroSesion + 1 : '';
+    document.getElementById('sf-modalidad').value = prefill.modalidad || 'presencial';
+    document.getElementById('sf-estado').value = 'upcoming';
+    document.getElementById('sf-nota').value = '';
   } else {
+    repetirWrap.style.display = 'flex';
     document.getElementById('sesion-modal-title').textContent = 'Nueva sesión';
     document.getElementById('sf-paciente').value = '';
     document.getElementById('sf-fecha').value = new Date().toISOString().slice(0,10);
     document.getElementById('sf-hora').value = '';
-    document.getElementById('sf-duracion').value = '50 min';
+    setDuracionField('50 min');
     document.getElementById('sf-numero').value = '';
     document.getElementById('sf-modalidad').value = 'presencial';
     document.getElementById('sf-estado').value = 'upcoming';
@@ -1582,6 +1762,32 @@ document.getElementById('btn-nueva-sesion').addEventListener('click', () => open
 document.getElementById('sesion-modal-close').addEventListener('click', closeSesionModal);
 document.getElementById('sesion-modal-cancel').addEventListener('click', closeSesionModal);
 
+/* ===== ATAJOS DE TECLADO (V1.9.9) ===== */
+document.addEventListener('keydown', (e) => {
+  if(document.getElementById('app-screen').style.display !== 'block') return; // solo con sesión iniciada
+  const tag = (e.target.tagName || '').toLowerCase();
+  const escribiendo = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
+  if(escribiendo) return;
+  if(e.key === 'n' || e.key === 'N'){
+    e.preventDefault();
+    openSesionModal(null);
+  } else if(e.key === '/'){
+    e.preventDefault();
+    document.getElementById('sb-buscador').focus();
+  }
+});
+
+/* ===== DUPLICAR SESIÓN (V1.9.9) ===== */
+function duplicarSesion(sid){
+  const s = todasSesionesCache.find(x => x.id === sid);
+  if(!s){ showToast('No encontramos esa sesión.', 'err'); return; }
+  // Por defecto propone la misma hora, una semana después (lo más común: paciente semanal)
+  let siguienteFecha = s.fechaStr || new Date().toISOString().slice(0,10);
+  const d = new Date(siguienteFecha + 'T00:00:00');
+  d.setDate(d.getDate() + 7);
+  openSesionModal(null, { ...s, fechaStr: fechaStrLocal(d) });
+}
+
 document.getElementById('sesion-modal-save').addEventListener('click', async () => {
   const errEl = document.getElementById('sesion-modal-err');
   const pacienteId = document.getElementById('sf-paciente').value;
@@ -1591,11 +1797,15 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
     errEl.textContent = 'Paciente, fecha y hora son obligatorios.';
     return;
   }
+  const duracionSel = document.getElementById('sf-duracion').value;
+  const duracionFinal = duracionSel === 'otra'
+    ? (document.getElementById('sf-duracion-otra').value.trim() || '50 min')
+    : duracionSel;
   const data = {
     pacienteId,
     fechaStr,
     hora,
-    duracion: document.getElementById('sf-duracion').value.trim(),
+    duracion: duracionFinal,
     numeroSesion: parseInt(document.getElementById('sf-numero').value) || null,
     modalidad: document.getElementById('sf-modalidad').value,
     estado: document.getElementById('sf-estado').value,
@@ -1611,14 +1821,36 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
   try{
     if(sesionEditingId){
       await updateDoc(doc(db, 'sesiones', sesionEditingId), data);
+      closeSesionModal();
+      showToast(choque ? 'Actualizada, pero ya hay otra sesión ese día a esa hora.' : 'Sesión actualizada.', choque ? 'warn' : 'ok');
     } else {
-      await addDoc(collection(db, 'sesiones'), data);
-    }
-    closeSesionModal();
-    if(choque){
-      showToast('Guardada, pero ya hay otra sesión ese día a esa hora.', 'warn');
-    } else {
-      showToast(sesionEditingId ? 'Sesión actualizada.' : 'Sesión creada.', 'ok');
+      const repetir = document.getElementById('sf-repetir').checked;
+      const veces = repetir ? Math.max(2, Math.min(52, parseInt(document.getElementById('sf-repeticiones').value) || 4)) : 1;
+
+      if(veces === 1){
+        await addDoc(collection(db, 'sesiones'), data);
+      } else {
+        // V1.9.9: crea 'veces' sesiones, una por semana, mismo horario, numeroSesion consecutivo
+        const fechaBase = new Date(fechaStr + 'T00:00:00');
+        const numeroBase = data.numeroSesion;
+        for(let i = 0; i < veces; i++){
+          const f = new Date(fechaBase);
+          f.setDate(f.getDate() + i*7);
+          await addDoc(collection(db, 'sesiones'), {
+            ...data,
+            fechaStr: fechaStrLocal(f),
+            numeroSesion: numeroBase ? numeroBase + i : null
+          });
+        }
+      }
+      closeSesionModal();
+      if(choque){
+        showToast('Guardada, pero ya hay otra sesión ese día a esa hora.', 'warn');
+      } else if(veces > 1){
+        showToast(`Se crearon ${veces} sesiones semanales.`, 'ok');
+      } else {
+        showToast('Sesión creada.', 'ok');
+      }
     }
   } catch(err){
     console.error(err);
@@ -1626,11 +1858,35 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
   }
 });
 
+/* ===== PAPELERA DE SESIONES (V1.9.10) =====
+   Eliminar ya no borra el documento: lo marca como "eliminada" y desaparece de
+   Agenda/Semana/Mes/Reportes/Ficha, pero queda visible en Sesiones > 🗑 Papelera
+   para restaurar por si fue un error. El borrado permanente es una acción aparte,
+   explícita, desde la papelera. */
 async function eliminarSesion(sid){
-  if(!confirm('¿Eliminar esta sesión de forma permanente? Esta acción no se puede deshacer.')) return;
+  if(!confirm('¿Enviar esta sesión a la papelera? Podrás restaurarla después desde Sesiones > Papelera.')) return;
+  try{
+    await updateDoc(doc(db, 'sesiones', sid), { eliminada: true, eliminadaFecha: new Date().toISOString() });
+    showToast('Sesión enviada a la papelera.', 'ok');
+  } catch(err){
+    console.error(err);
+    alert('No pudimos eliminar la sesión. Intenta de nuevo.');
+  }
+}
+async function restaurarSesion(sid){
+  try{
+    await updateDoc(doc(db, 'sesiones', sid), { eliminada: false, eliminadaFecha: null });
+    showToast('Sesión restaurada.', 'ok');
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos restaurar la sesión.', 'err');
+  }
+}
+async function eliminarSesionDefinitivo(sid){
+  if(!confirm('¿Eliminar esta sesión de forma PERMANENTE? Esta acción no se puede deshacer y no queda en la papelera.')) return;
   try{
     await deleteDoc(doc(db, 'sesiones', sid));
-    showToast('Sesión eliminada.', 'ok');
+    showToast('Sesión eliminada definitivamente.', 'ok');
   } catch(err){
     console.error(err);
     alert('No pudimos eliminar la sesión. Intenta de nuevo.');
@@ -1642,6 +1898,7 @@ function openFicha(pid){
   const p = pacientesCache[pid];
   if(!p) return;
   fichaActualId = pid;
+  iniciarHistorialSiHaceFalta();
   document.getElementById('pf-av').textContent = p.iniciales || '??';
   document.getElementById('pf-av').style.background = p.colorAv || '#4A7B6F';
   document.getElementById('pf-nm').textContent = p.nombre || 'Paciente';
@@ -1651,7 +1908,7 @@ function openFicha(pid){
   document.getElementById('pf-motivo').textContent = p.motivoConsulta || 'Sin información registrada.';
 
   const sesionesPaciente = todasSesionesCache
-    .filter(s => s.pacienteId === pid)
+    .filter(s => s.pacienteId === pid && !s.eliminada)
     .sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||'') || (b.hora||'').localeCompare(a.hora||'')); // más reciente primero
   const tlEl = document.getElementById('pf-timeline');
   if(sesionesPaciente.length === 0){
@@ -1693,7 +1950,7 @@ function renderPacientesGrid(){
     const p = pacientesCache[id];
     return `<div class="ses-card" data-pid="${id}" style="cursor:default;">
       <div class="tcol" style="width:44px;">
-        <div class="pt-av" style="background:${p.colorAv || '#4A7B6F'}; margin:0 auto; width:34px; height:34px; font-size:12px;">${p.iniciales || '??'}</div>
+        <div class="pt-av" style="background:${p.colorAv || '#4A7B6F'}; margin:0 auto; width:34px; height:34px; font-size:13px;">${p.iniciales || '??'}</div>
       </div>
       <div class="sinfo">
         <div class="snm">${p.nombre || 'Sin nombre'}</div>
@@ -1895,8 +2152,9 @@ document.getElementById('pf-export-btn').addEventListener('click', async () => {
     const snap = await getDocs(q);
     const sesionesPaciente = [];
     snap.forEach(d => sesionesPaciente.push({ id: d.id, ...d.data() }));
-    sesionesPaciente.sort((a,b) => (a.fechaStr||'').localeCompare(b.fechaStr||'') || (a.hora||'').localeCompare(b.hora||''));
-    generarYAbrirHistoriaPDF(p, sesionesPaciente, 'FICHA DE PACIENTE — HISTORIA');
+    const sesionesActivas = sesionesPaciente.filter(s => !s.eliminada); // V1.9.10: la historia oficial no incluye la papelera
+    sesionesActivas.sort((a,b) => (a.fechaStr||'').localeCompare(b.fechaStr||'') || (a.hora||'').localeCompare(b.hora||''));
+    generarYAbrirHistoriaPDF(p, sesionesActivas, 'FICHA DE PACIENTE — HISTORIA');
   } catch(err){
     console.error('Error exportando historia del paciente:', err);
     showToast('No pudimos generar la exportación. Intenta de nuevo.', 'err');
@@ -1907,7 +2165,7 @@ document.getElementById('pf-export-btn').addEventListener('click', async () => {
 
 /* ===== REPORTES (V1.7) ===== */
 function renderReportes(){
-  const sesiones = todasSesionesCache;
+  const sesiones = todasSesionesCache.filter(s => !s.eliminada); // V1.9.10: la papelera no cuenta en reportes
   const total = sesiones.length;
   const completadas = sesiones.filter(s => s.estado === 'done').length;
   const proximas = sesiones.filter(s => s.estado === 'upcoming').length;
@@ -2003,7 +2261,7 @@ function renderReportes(){
 }
 
 function exportarReportePDF(){
-  const sesiones = todasSesionesCache;
+  const sesiones = todasSesionesCache.filter(s => !s.eliminada); // V1.9.10
   const total = sesiones.length;
   const completadas = sesiones.filter(s => s.estado === 'done').length;
   const proximas = sesiones.filter(s => s.estado === 'upcoming').length;
@@ -2050,17 +2308,17 @@ function exportarReportePDF(){
 
   const filasMes = meses.map(m =>
     `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <div style="width:110px;font-size:12px;color:#475569;">${m.lbl}</div>
+      <div style="width:110px;font-size:13px;color:#475569;">${m.lbl}</div>
       ${barStyle(Math.round((m.count/maxMes)*100), colorAcento)}
-      <div style="width:24px;text-align:right;font-size:12px;color:#64748b;">${m.count}</div>
+      <div style="width:24px;text-align:right;font-size:13px;color:#64748b;">${m.count}</div>
     </div>`).join('');
 
   const filasRanking = ranking.map(([pid, cnt]) => {
     const p = pacientesCache[pid] || {};
     return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <div style="width:110px;font-size:12px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.nombre || 'Paciente'}</div>
+      <div style="width:110px;font-size:13px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.nombre || 'Paciente'}</div>
       ${barStyle(Math.round((cnt/maxPac)*100), '#B8874A')}
-      <div style="width:24px;text-align:right;font-size:12px;color:#64748b;">${cnt}</div>
+      <div style="width:24px;text-align:right;font-size:13px;color:#64748b;">${cnt}</div>
     </div>`;
   }).join('');
 
@@ -2072,11 +2330,11 @@ function exportarReportePDF(){
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid ${colorAcento};padding-bottom:20px;margin-bottom:24px;}
     .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
     .card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;}
-    .card-num{font-size:22px;font-weight:700;color:#0f172a;}
-    .card-lbl{font-size:11px;color:#64748b;margin-top:4px;}
+    .card-num{font-size:23px;font-weight:700;color:#0f172a;}
+    .card-lbl{font-size:12px;color:#64748b;margin-top:4px;}
     .section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-bottom:16px;}
-    .section-title{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:14px;}
-    th{background:${colorAcento};color:#fff;padding:10px;text-align:left;font-size:12px;}
+    .section-title{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:14px;}
+    th{background:${colorAcento};color:#fff;padding:10px;text-align:left;font-size:13px;}
   </style></head><body>
   <button class="no-print" onclick="window.print()" style="padding:12px;background:${colorAcento};color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-bottom:20px;width:100%;">🖨️ Imprimir / Guardar como PDF</button>
   <div class="header">
@@ -2094,11 +2352,11 @@ function exportarReportePDF(){
   </div>
   <div class="section">
     <div class="section-title">Sesiones por mes (últimos 6 meses)</div>
-    ${filasMes || '<p style="color:#94a3b8;font-size:12px;">Sin datos.</p>'}
+    ${filasMes || '<p style="color:#94a3b8;font-size:13px;">Sin datos.</p>'}
   </div>
   <div class="section">
     <div class="section-title">Sesiones por paciente</div>
-    ${filasRanking || '<p style="color:#94a3b8;font-size:12px;">Sin datos.</p>'}
+    ${filasRanking || '<p style="color:#94a3b8;font-size:13px;">Sin datos.</p>'}
   </div>
   <div class="section">
     <div class="section-title">Modalidad</div>
@@ -2107,11 +2365,11 @@ function exportarReportePDF(){
       <div style="width:${100-pVirt}%;background:#B8874A;height:100%;"></div>
     </div>
     <div style="display:flex;gap:20px;">
-      <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px;">
         <div style="width:10px;height:10px;border-radius:50%;background:#5068B0;"></div>
         Virtual <strong>${virt}</strong> (${pVirt}%)
       </div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px;">
         <div style="width:10px;height:10px;border-radius:50%;background:#B8874A;"></div>
         Presencial <strong>${pres}</strong> (${100-pVirt}%)
       </div>

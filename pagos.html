@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsicoGestión — Pagos</title>
+<!-- V1.0: módulo financiero independiente. Pagos por sesión/período/abono, cartera y mora,
+     planes de cuotas, analítica de ingresos, recibos PDF con folio. Colección Firestore
+     independiente "pagos" — no modifica pacientes ni sesiones existentes. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+
+<script>
+/* ===== ANTI-FLASH THEME (IIFE) — mismo esquema que index.html ===== */
+(function(){
+  var t = localStorage.getItem('psicogestion_theme_v1') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+
+<style>
+/* ============================================
+   PSICOGESTIÓN — VARIABLES DE TEMA (idénticas a index.html
+   para que Pagos se sienta parte del mismo sistema)
+   ============================================ */
+:root,
+[data-theme="light"]{
+  --sb:#1A2332; --sb-txt:#A8B8C8; --sb-txt-dim:rgba(255,255,255,0.32);
+  --pri:#4A7B6F; --pri-lt:#E3EDE9; --pri-on-sb:#7EC8B0;
+  --warm:#B8874A; --warm-lt:#F5EAD8;
+  --pg:#EEE9E1; --crd:#FFFFFF;
+  --txt:#1A2332; --muted:#8B8E96;
+  --brd:#DDD9D1;
+  --done:#999BA2; --done-lt:#F1F0EE;
+  --virt-bg:#EEF2FB; --virt-txt:#5068B0;
+  --pres-bg:#FFF4E6; --pres-txt:#9A6830;
+  --danger:#B0503E; --danger-lt:#F5DED9;
+  /* Nuevas variables financieras (V1.0 Pagos) */
+  --ok:#4A7B6F; --ok-lt:#E3EDE9;
+  --mora:#B0503E; --mora-lt:#F5DED9;
+  --parcial:#B8874A; --parcial-lt:#F5EAD8;
+}
+[data-theme="dark"]{
+  --sb:#0F1512; --sb-txt:#8A9A93; --sb-txt-dim:rgba(255,255,255,0.26);
+  --pri:#5A9885; --pri-lt:#16221D; --pri-on-sb:#5A9885;
+  --warm:#C99A5B; --warm-lt:#241E13;
+  --pg:#161B19; --crd:#1D2320;
+  --txt:#EDEDE9; --muted:#8A9089;
+  --brd:#2C332F;
+  --done:#6B716C; --done-lt:#232723;
+  --virt-bg:#1B1F2C; --virt-txt:#8B9DE0;
+  --pres-bg:#241E13; --pres-txt:#C99A5B;
+  --danger:#D97B65; --danger-lt:#2A1B17;
+  --ok:#5A9885; --ok-lt:#16221D;
+  --mora:#D97B65; --mora-lt:#2A1B17;
+  --parcial:#C99A5B; --parcial-lt:#241E13;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--pg);
+  color:var(--txt);
+  transition:background .2s ease, color .2s ease;
+  -webkit-font-smoothing:antialiased;
+}
+button, input, select, textarea{font-family:'Inter',sans-serif;}
+
+/* ===== LOGIN (idéntico a index.html) ===== */
+#login-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--pg); padding:20px;
+}
+.login-card{
+  width:100%; max-width:360px; background:var(--crd);
+  border:0.5px solid var(--brd); border-radius:14px; padding:32px 28px;
+}
+.login-logo{font-size:20px; font-weight:700; color:var(--txt); text-align:center;}
+.login-sub{font-size:13.5px; color:var(--muted); text-align:center; margin-top:4px; margin-bottom:26px;}
+.login-field{margin-bottom:14px;}
+.login-field label{font-size:12.5px; color:var(--muted); display:block; margin-bottom:5px;}
+.login-field input, .login-field select{
+  width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:0 12px; font-size:14.5px; outline:none;
+}
+.login-field input:focus, .login-field select:focus{border-color:var(--pri);}
+.login-field textarea{
+  width:100%; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:8px 12px; font-size:14.5px; outline:none;
+  font-family:'Inter',sans-serif; resize:vertical; min-height:60px;
+}
+.login-btn{
+  width:100%; height:42px; border-radius:8px; border:none; background:var(--pri);
+  color:#fff; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:6px;
+}
+.login-btn:hover{opacity:.9;}
+.login-btn.ghost{background:var(--crd); color:var(--txt); border:0.5px solid var(--brd);}
+.login-btn.danger{background:var(--danger);}
+.login-err{font-size:13px; color:var(--danger); margin-top:10px; text-align:center; min-height:16px;}
+
+/* ===== APP SHELL ===== */
+#app-screen{display:none; height:100vh; overflow:hidden;}
+.app{display:flex; height:100%; width:100%;}
+
+/* Sidebar (idéntico a index.html, con link de regreso) */
+.sb{width:230px; background:var(--sb); display:flex; flex-direction:column; flex-shrink:0;}
+.sb-logo{padding:20px 18px 14px; border-bottom:0.5px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:flex-start;}
+.sb-logo .aname{font-size:15.5px; font-weight:600; color:#fff;}
+.sb-logo .asub{font-size:11px; color:var(--sb-txt-dim); margin-top:2px;}
+.theme-toggle{
+  width:28px; height:28px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12);
+  background:transparent; color:var(--sb-txt); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:15px; flex-shrink:0;
+}
+.theme-toggle:hover{background:rgba(255,255,255,0.06);}
+.sb-nav{padding:10px 8px;}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:7px;
+  cursor:pointer; color:var(--sb-txt); font-size:13.5px; transition:background .15s;
+}
+.nav-item:hover{background:rgba(255,255,255,0.05);}
+.nav-item.active{background:rgba(74,123,111,0.22); color:#fff;}
+.nav-item.active i{color:var(--pri-on-sb);}
+.nav-item i{font-size:17px; color:rgba(255,255,255,0.35); width:18px; text-align:center;}
+.sb-back{margin:8px 8px 0; padding:9px 10px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.1);
+  color:var(--sb-txt); font-size:12.5px; display:flex; align-items:center; gap:8px; cursor:pointer;}
+.sb-back:hover{background:rgba(255,255,255,0.05);}
+.sb-flex{flex:1;}
+.sb-prof{padding:12px 14px; border-top:0.5px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:10px;}
+.prof-av{width:30px; height:30px; border-radius:50%; background:var(--pri); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex-shrink:0;}
+.prof-nm{font-size:13px; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px;}
+.prof-rl{font-size:11px; color:var(--sb-txt-dim); cursor:pointer;}
+.prof-rl:hover{color:var(--sb-txt);}
+
+/* Main */
+.main{flex:1; background:var(--pg); display:flex; flex-direction:column; overflow:hidden; min-width:0;}
+.view{display:none; height:100%; flex-direction:column; overflow:hidden;}
+.view.active{display:flex;}
+
+.mhdr{padding:16px 22px 10px; border-bottom:0.5px solid var(--brd); flex-shrink:0;}
+.mdate{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px;}
+.mtitle{font-size:19px; font-weight:600; color:var(--txt); margin-top:2px;}
+.mbody{flex:1; overflow-y:auto; padding:18px 22px;}
+
+/* ===== TABS DE SECCIÓN ===== */
+.pg-tabs{display:flex; gap:4px; margin-top:12px; background:var(--pg); border-radius:8px; padding:3px; width:fit-content; flex-wrap:wrap;}
+.ptab{font-size:13px; font-weight:500; color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; transition:all .15s; white-space:nowrap;}
+.ptab.active{background:var(--crd); color:var(--txt); box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.psub{display:none;}
+.psub.active{display:block;}
+
+/* ===== TARJETAS RESUMEN ===== */
+.kpi-row{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+.kpi{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; flex:1; min-width:130px;}
+.kpi-num{font-size:23px; font-weight:700; color:var(--txt); line-height:1;}
+.kpi-lbl{font-size:11.5px; color:var(--muted); margin-top:5px;}
+.kpi-num.ok{color:var(--ok);}
+.kpi-num.mora{color:var(--mora);}
+.kpi-num.parcial{color:var(--parcial);}
+
+/* ===== FILTROS ===== */
+.filter-bar{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+.filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="date"]{
+  height:34px; border-radius:7px; border:0.5px solid var(--brd);
+  background:var(--crd); color:var(--txt); padding:0 10px; font-size:13px; outline:none;
+  font-family:'Inter',sans-serif; cursor:pointer;
+}
+.filter-bar input[type="text"], .filter-bar input[type="date"]{cursor:text;}
+
+/* ===== LISTA DE PAGOS ===== */
+.pago-card{
+  background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:13px 15px;
+  margin-bottom:8px; cursor:pointer; transition:border-color .15s; display:flex; align-items:center; gap:14px;
+}
+.pago-card:hover{border-color:var(--pri);}
+.pago-av{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; flex-shrink:0; color:#fff;}
+.pago-info{flex:1; min-width:0;}
+.pago-nm{font-size:14.5px; font-weight:600; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pago-sub{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.pago-monto{font-size:16px; font-weight:700; color:var(--txt); text-align:right; flex-shrink:0;}
+.pago-fecha{font-size:11.5px; color:var(--muted); text-align:right; margin-top:2px;}
+.badge{font-size:11.5px; padding:3px 8px; border-radius:4px; font-weight:500; flex-shrink:0;}
+.b-pagado{background:var(--ok-lt); color:var(--ok);}
+.b-pendiente{background:var(--mora-lt); color:var(--mora);}
+.b-parcial{background:var(--parcial-lt); color:var(--parcial);}
+.b-efectivo{background:var(--pg); color:var(--muted);}
+.b-transferencia{background:var(--virt-bg); color:var(--virt-txt);}
+.b-otro{background:var(--pg); color:var(--muted);}
+.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:14px;}
+
+/* ===== CARTERA (saldos por paciente) ===== */
+.cart-card{
+  background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px;
+  margin-bottom:8px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:border-color .15s;
+}
+.cart-card:hover{border-color:var(--pri);}
+.cart-card.mora{border-color:var(--mora);}
+.cart-av{width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; color:#fff;}
+.cart-info{flex:1; min-width:0;}
+.cart-nm{font-size:14.5px; font-weight:600; color:var(--txt);}
+.cart-sub{font-size:12px; color:var(--muted); margin-top:2px;}
+.cart-saldo{text-align:right; flex-shrink:0;}
+.cart-saldo-num{font-size:16px; font-weight:700;}
+.cart-saldo-num.mora{color:var(--mora);}
+.cart-saldo-num.ok{color:var(--ok);}
+.cart-saldo-lbl{font-size:11px; color:var(--muted); margin-top:2px;}
+.mora-chip{font-size:10.5px; background:var(--mora-lt); color:var(--mora); padding:2px 7px; border-radius:10px; font-weight:600; margin-top:4px; display:inline-block;}
+
+/* ===== PLANES DE CUOTAS ===== */
+.plan-card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:16px; margin-bottom:12px;}
+.plan-hdr{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+.plan-nm{font-size:14.5px; font-weight:600; color:var(--txt);}
+.plan-total{font-size:13px; color:var(--muted);}
+.cuota-grid{display:flex; gap:6px; flex-wrap:wrap;}
+.cuota-chip{
+  width:34px; height:34px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  font-size:11.5px; font-weight:600; border:0.5px solid var(--brd); cursor:pointer; transition:all .15s;
+  background:var(--pg); color:var(--muted);
+}
+.cuota-chip.pagada{background:var(--ok); color:#fff; border-color:var(--ok);}
+.cuota-chip.vencida{background:var(--mora-lt); color:var(--mora); border-color:var(--mora);}
+.cuota-chip:hover{border-color:var(--pri);}
+
+/* ===== REPORTES / ANALÍTICA (mismo patrón que index.html) ===== */
+.rep-section{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:16px 18px; margin-bottom:14px;}
+.rep-section-title{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:14px;}
+.rep-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.rep-bar-row:last-child{margin-bottom:0;}
+.rep-bar-lbl{font-size:13px; color:var(--txt); width:110px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rep-bar-track{flex:1; background:var(--pg); border-radius:4px; height:10px; overflow:hidden;}
+.rep-bar-fill{height:100%; border-radius:4px; background:var(--pri); transition:width .4s ease;}
+.rep-bar-val{font-size:12.5px; color:var(--muted); width:64px; text-align:right; flex-shrink:0;}
+.rep-empty{font-size:13.5px; color:var(--muted); text-align:center; padding:20px 0;}
+.rep-export-btn{
+  display:flex; align-items:center; gap:6px;
+  height:36px; padding:0 16px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--crd); color:var(--txt); font-size:13.5px; font-weight:500;
+  cursor:pointer; font-family:'Inter',sans-serif; transition:border-color .15s;
+}
+.rep-export-btn:hover{border-color:var(--pri); color:var(--pri);}
+
+/* ===== BOTÓN FLOTANTE NUEVO PAGO ===== */
+.fab-row{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+
+/* ===== MODALES (mismo patrón index.html) ===== */
+.modal-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:60; align-items:center; justify-content:center; padding:20px;}
+.modal-box{width:100%; max-width:440px; max-height:88vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;}
+.modal-hdr{display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
+.modal-hdr .t{font-size:16px; font-weight:600;}
+.modal-hdr .x{cursor:pointer; color:var(--muted); font-size:17px;}
+.row-2{display:flex; gap:10px;}
+.row-2 > *{flex:1;}
+
+/* ===== TOAST (idéntico a index.html) ===== */
+#toast-container{position:fixed; bottom:18px; right:18px; z-index:100; display:flex; flex-direction:column; gap:8px; align-items:flex-end;}
+.toast{
+  background:var(--sb); color:#fff; font-size:13.5px; padding:11px 16px;
+  border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2);
+  display:flex; align-items:center; gap:8px; max-width:300px;
+  opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease;
+}
+.toast.show{opacity:1; transform:translateY(0);}
+.toast i{font-size:16px; flex-shrink:0;}
+.toast.t-ok i{color:var(--pri-on-sb);}
+.toast.t-warn i{color:var(--warm);}
+.toast.t-err i{color:var(--danger);}
+
+/* ===== MOBILE (mismo patrón index.html) ===== */
+.mobile-topbar{display:none;}
+.mobile-bottomnav{display:none;}
+@media (max-width: 768px){
+  .sb{display:none;}
+  .app{flex-direction:column;}
+  .mobile-topbar{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--sb); flex-shrink:0;}
+  .mobile-topbar .aname{font-size:15px; font-weight:600; color:#fff;}
+  .mobile-topbar-actions{display:flex; gap:8px;}
+  .main{padding-bottom:58px;}
+  .mobile-bottomnav{display:flex; position:fixed; bottom:0; left:0; right:0; height:58px; background:var(--sb); border-top:0.5px solid rgba(255,255,255,0.08); z-index:40;}
+  .mobile-bottomnav .nav-item{flex:1; flex-direction:column; gap:2px; justify-content:center; align-items:center; border-radius:0; font-size:10.5px; padding:6px 4px; margin:0;}
+  .mobile-bottomnav .nav-item i{font-size:19px; width:auto;}
+  .mobile-bottomnav .nav-item.active{background:transparent;}
+  .mhdr{padding:14px 16px 8px;}
+  .mbody{padding:12px 16px;}
+  .kpi{min-width:calc(50% - 4px);}
+  .pago-monto{font-size:14px;}
+  .rep-bar-lbl{width:80px;}
+}
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
+.ti{font-family:"tabler-icons" !important; font-style:normal !important; line-height:1 !important;}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN (mismo Firebase Auth que index.html) ===== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">PsicoGestión</div>
+    <div class="login-sub">Módulo de Pagos</div>
+    <div class="login-field">
+      <label>Correo</label>
+      <input type="email" id="login-email" placeholder="nombre@correo.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="login-btn">Iniciar sesión</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-screen">
+  <div class="mobile-topbar">
+    <div class="aname">Pagos</div>
+    <div class="mobile-topbar-actions">
+      <button class="theme-toggle" id="theme-toggle-m" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+      <button class="theme-toggle" id="logout-btn-m" aria-label="Cerrar sesión"><i class="ti ti-logout"></i></button>
+    </div>
+  </div>
+  <div class="app">
+    <aside class="sb">
+      <div class="sb-logo">
+        <div>
+          <div class="aname">Pagos</div>
+          <div class="asub">Módulo financiero</div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+      </div>
+      <div class="sb-nav">
+        <div class="sb-back" id="volver-agenda"><i class="ti ti-arrow-left"></i>Volver a la agenda</div>
+        <div class="nav-item active" data-view="dashboard"><i class="ti ti-report-money"></i>Resumen</div>
+        <div class="nav-item" data-view="lista"><i class="ti ti-receipt"></i>Pagos</div>
+        <div class="nav-item" data-view="cartera"><i class="ti ti-wallet"></i>Cartera</div>
+        <div class="nav-item" data-view="cuotas"><i class="ti ti-calendar-dollar"></i>Planes de cuotas</div>
+        <div class="nav-item" data-view="analitica"><i class="ti ti-chart-histogram"></i>Analítica</div>
+      </div>
+      <div class="sb-flex"></div>
+      <div class="sb-prof">
+        <div class="prof-av" id="prof-av">--</div>
+        <div>
+          <div class="prof-nm" id="prof-nm">Psicólogo/a</div>
+          <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <!-- ===== VISTA: RESUMEN / DASHBOARD ===== -->
+      <section class="view active" id="view-dashboard">
+        <div class="mhdr">
+          <div class="mdate" id="dash-date"></div>
+          <div class="mtitle">Resumen financiero</div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-num ok" id="kpi-cobrado-mes">$0</div><div class="kpi-lbl">Cobrado este mes</div></div>
+            <div class="kpi"><div class="kpi-num" id="kpi-cobrado-total">$0</div><div class="kpi-lbl">Cobrado histórico</div></div>
+            <div class="kpi"><div class="kpi-num parcial" id="kpi-pendiente">$0</div><div class="kpi-lbl">Pendiente</div></div>
+            <div class="kpi"><div class="kpi-num mora" id="kpi-mora">$0</div><div class="kpi-lbl">En mora</div></div>
+          </div>
+        </div>
+        <div class="mbody">
+          <div class="rep-section">
+            <div class="rep-section-title">Últimos pagos registrados</div>
+            <div id="dash-ultimos"><div class="rep-empty">Sin pagos registrados aún.</div></div>
+          </div>
+          <div class="rep-section">
+            <div class="rep-section-title">Pacientes con mora</div>
+            <div id="dash-mora"><div class="rep-empty">Nadie está en mora. 🎉</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== VISTA: LISTA DE PAGOS ===== -->
+      <section class="view" id="view-lista">
+        <div class="mhdr">
+          <div class="fab-row">
+            <div>
+              <div class="mdate">Registro</div>
+              <div class="mtitle">Pagos</div>
+            </div>
+            <button class="login-btn" id="btn-nuevo-pago" style="width:auto; padding:0 16px; height:36px; margin-top:0;">
+              <i class="ti ti-plus" style="font-size:15px; vertical-align:-2px; margin-right:5px;"></i>Nuevo pago
+            </button>
+          </div>
+          <div class="filter-bar">
+            <select id="f-paciente"><option value="">Todos los pacientes</option></select>
+            <select id="f-estado">
+              <option value="">Todos los estados</option>
+              <option value="pagado">Pagado</option>
+              <option value="parcial">Parcial</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+            <select id="f-metodo">
+              <option value="">Todos los métodos</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="otro">Otro</option>
+            </select>
+            <select id="f-tipo">
+              <option value="">Todos los tipos</option>
+              <option value="sesion">Por sesión</option>
+              <option value="periodo">Por período</option>
+              <option value="abono">Abono</option>
+            </select>
+            <input type="text" id="f-busqueda" placeholder="Buscar en notas...">
+          </div>
+        </div>
+        <div class="mbody" id="lista-pagos">
+          <div class="empty-state">Cargando pagos...</div>
+        </div>
+      </section>
+
+      <!-- ===== VISTA: CARTERA ===== -->
+      <section class="view" id="view-cartera">
+        <div class="mhdr">
+          <div class="mdate">Cobranza</div>
+          <div class="mtitle">Cartera por paciente</div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-num ok" id="kpi-cartera-aldia">0</div><div class="kpi-lbl">Al día</div></div>
+            <div class="kpi"><div class="kpi-num mora" id="kpi-cartera-mora">0</div><div class="kpi-lbl">En mora</div></div>
+            <div class="kpi"><div class="kpi-num" id="kpi-cartera-saldo">$0</div><div class="kpi-lbl">Saldo total pendiente</div></div>
+          </div>
+        </div>
+        <div class="mbody" id="lista-cartera">
+          <div class="empty-state">Cargando cartera...</div>
+        </div>
+      </section>
+
+      <!-- ===== VISTA: PLANES DE CUOTAS ===== -->
+      <section class="view" id="view-cuotas">
+        <div class="mhdr">
+          <div class="fab-row">
+            <div>
+              <div class="mdate">Financiación</div>
+              <div class="mtitle">Planes de cuotas</div>
+            </div>
+            <button class="login-btn" id="btn-nuevo-plan" style="width:auto; padding:0 16px; height:36px; margin-top:0;">
+              <i class="ti ti-plus" style="font-size:15px; vertical-align:-2px; margin-right:5px;"></i>Nuevo plan
+            </button>
+          </div>
+        </div>
+        <div class="mbody" id="lista-planes">
+          <div class="empty-state">Cargando planes...</div>
+        </div>
+      </section>
+
+      <!-- ===== VISTA: ANALÍTICA ===== -->
+      <section class="view" id="view-analitica">
+        <div class="mhdr">
+          <div class="fab-row">
+            <div>
+              <div class="mdate">Estadísticas</div>
+              <div class="mtitle">Analítica de ingresos</div>
+            </div>
+            <button class="rep-export-btn" id="btn-exportar-analitica">
+              <i class="ti ti-printer" style="font-size:16px;"></i>Exportar PDF
+            </button>
+          </div>
+        </div>
+        <div class="mbody">
+          <div class="rep-section">
+            <div class="rep-section-title">Ingresos por mes (últimos 6 meses)</div>
+            <div id="an-barras-mes"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+          <div class="rep-section">
+            <div class="rep-section-title">Ranking de facturación por paciente</div>
+            <div id="an-ranking"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+          <div class="rep-section">
+            <div class="rep-section-title">Métodos de pago</div>
+            <div id="an-metodos"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+          <div class="rep-section">
+            <div class="rep-section-title">Cumplimiento de pago</div>
+            <div id="an-cumplimiento"><div class="rep-empty">Sin datos suficientes.</div></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <nav class="mobile-bottomnav">
+    <div class="nav-item active" data-view="dashboard"><i class="ti ti-report-money"></i>Resumen</div>
+    <div class="nav-item" data-view="lista"><i class="ti ti-receipt"></i>Pagos</div>
+    <div class="nav-item" data-view="cartera"><i class="ti ti-wallet"></i>Cartera</div>
+    <div class="nav-item" data-view="cuotas"><i class="ti ti-calendar-dollar"></i>Cuotas</div>
+    <div class="nav-item" data-view="analitica"><i class="ti ti-chart-histogram"></i>Analítica</div>
+  </nav>
+
+  <!-- ===== MODAL: NUEVO / EDITAR PAGO ===== -->
+  <div class="modal-overlay" id="pago-modal-overlay">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="t" id="pago-modal-title">Nuevo pago</div>
+        <span class="x" id="pago-modal-close"><i class="ti ti-x"></i></span>
+      </div>
+
+      <div class="login-field"><label>Paciente</label>
+        <select id="p-paciente"><option value="">Selecciona un paciente</option></select>
+      </div>
+
+      <div class="login-field"><label>Tipo de pago</label>
+        <select id="p-tipo">
+          <option value="sesion">Por sesión</option>
+          <option value="periodo">Por período</option>
+          <option value="abono">Abono a cuenta</option>
+        </select>
+      </div>
+
+      <div class="login-field" id="p-sesion-wrap" style="display:none;">
+        <label>Sesión asociada</label>
+        <select id="p-sesion"><option value="">Selecciona una sesión</option></select>
+      </div>
+
+      <div class="row-2">
+        <div class="login-field"><label>Monto</label><input type="number" id="p-monto" placeholder="150000" min="0"></div>
+        <div class="login-field"><label>Fecha de pago</label><input type="date" id="p-fecha"></div>
+      </div>
+
+      <div class="row-2">
+        <div class="login-field"><label>Método de pago</label>
+          <select id="p-metodo">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="login-field"><label>Estado</label>
+          <select id="p-estado">
+            <option value="pagado">Pagado</option>
+            <option value="parcial">Parcial</option>
+            <option value="pendiente">Pendiente</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="login-field" id="p-saldo-wrap" style="display:none;">
+        <label>Saldo pendiente (si es parcial)</label>
+        <input type="number" id="p-saldo" placeholder="0" min="0">
+      </div>
+
+      <div class="login-field"><label>Nota / referencia</label><textarea id="p-nota" placeholder="Referencia de transferencia, observaciones..."></textarea></div>
+
+      <div class="login-err" id="pago-modal-err"></div>
+
+      <div class="row-2" style="margin-top:8px;">
+        <button class="login-btn ghost" id="pago-modal-cancel">Cancelar</button>
+        <button class="login-btn" id="pago-modal-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: NUEVO PLAN DE CUOTAS ===== -->
+  <div class="modal-overlay" id="plan-modal-overlay">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="t">Nuevo plan de cuotas</div>
+        <span class="x" id="plan-modal-close"><i class="ti ti-x"></i></span>
+      </div>
+
+      <div class="login-field"><label>Paciente</label>
+        <select id="pl-paciente"><option value="">Selecciona un paciente</option></select>
+      </div>
+      <div class="login-field"><label>Concepto</label><input type="text" id="pl-concepto" placeholder="ej. Paquete 8 sesiones"></div>
+      <div class="row-2">
+        <div class="login-field"><label>Monto total</label><input type="number" id="pl-total" placeholder="800000" min="0"></div>
+        <div class="login-field"><label># de cuotas</label><input type="number" id="pl-num-cuotas" placeholder="4" min="1" max="24" value="4"></div>
+      </div>
+      <div class="row-2">
+        <div class="login-field"><label>Fecha primera cuota</label><input type="date" id="pl-fecha-inicio"></div>
+        <div class="login-field"><label>Frecuencia</label>
+          <select id="pl-frecuencia">
+            <option value="mensual">Mensual</option>
+            <option value="quincenal">Quincenal</option>
+            <option value="semanal">Semanal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="login-err" id="plan-modal-err"></div>
+
+      <div class="row-2" style="margin-top:8px;">
+        <button class="login-btn ghost" id="plan-modal-cancel">Cancelar</button>
+        <button class="login-btn" id="plan-modal-save">Crear plan</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs,
+  addDoc, updateDoc, deleteDoc, writeBatch, enableIndexedDbPersistence
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* ============================================
+   FIREBASE CONFIG — mismo proyecto zamora-psicologia
+   (idéntico a index.html, así comparten pacientes/sesiones)
+   ============================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyA3BpiEbWY7XUZskliM56ZGkpioSmjJbwA",
+  authDomain: "zamora-psicologia.firebaseapp.com",
+  projectId: "zamora-psicologia",
+  storageBucket: "zamora-psicologia.firebasestorage.app",
+  messagingSenderId: "1018710047961",
+  appId: "1:1018710047961:web:bc619e40b828d35347d2c8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+try{ await enableIndexedDbPersistence(db); } catch(err){ console.warn('Offline no disponible aquí:', err.code); }
+
+const NOMBRE_CONSULTORIO = "ZAMORA PSICOLOGÍA";
+
+/* ============================================
+   ESTRUCTURA DE DATOS — Colección "pagos" (NUEVA, independiente)
+   Documentos con:
+     pacienteId (string, ref a "pacientes"), sesionId (string|null, ref a "sesiones"),
+     tipo ("sesion"|"periodo"|"abono"),
+     monto (number), saldoPendiente (number),
+     fecha (string "YYYY-MM-DD"), metodo ("efectivo"|"transferencia"|"otro"),
+     estado ("pagado"|"parcial"|"pendiente"),
+     nota (string), numeroRecibo (number autoincremental), creadoEn (timestamp)
+
+   Colección "planesPago" (NUEVA):
+     pacienteId, concepto, montoTotal, numCuotas, frecuencia,
+     cuotas: [{ n, fecha, monto, pagada, pagoId }]
+
+   No se modifica NINGÚN documento existente de "pacientes" ni "sesiones".
+   ============================================ */
+
+/* ===== THEME TOGGLE (idéntico a index.html) ===== */
+const themeToggle = document.getElementById('theme-toggle');
+const themeToggleM = document.getElementById('theme-toggle-m');
+function applyThemeIcon(){
+  const t = document.documentElement.getAttribute('data-theme');
+  const icon = t === 'dark' ? '<i class="ti ti-sun"></i>' : '<i class="ti ti-moon"></i>';
+  if(themeToggle) themeToggle.innerHTML = icon;
+  if(themeToggleM) themeToggleM.innerHTML = icon;
+}
+applyThemeIcon();
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('psicogestion_theme_v1', next);
+  applyThemeIcon();
+}
+if(themeToggle) themeToggle.addEventListener('click', toggleTheme);
+if(themeToggleM) themeToggleM.addEventListener('click', toggleTheme);
+
+document.getElementById('dash-date').textContent =
+  new Date().toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+/* ===== VOLVER A LA AGENDA ===== */
+document.getElementById('volver-agenda').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
+
+/* ===== LOGIN ===== */
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app-screen');
+const loginBtn = document.getElementById('login-btn');
+const loginErr = document.getElementById('login-err');
+loginBtn.addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  loginErr.textContent = '';
+  if(!email || !pass){ loginErr.textContent = 'Completa correo y contraseña.'; return; }
+  signInWithEmailAndPassword(auth, email, pass)
+    .catch(err => { loginErr.textContent = 'No pudimos iniciar sesión. Verifica tus datos.'; console.error(err); });
+}
+document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+const logoutBtnM = document.getElementById('logout-btn-m');
+if(logoutBtnM) logoutBtnM.addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+  if(user){
+    loginScreen.style.display = 'none';
+    appScreen.style.display = 'block';
+    document.getElementById('prof-nm').textContent = user.email;
+    document.getElementById('prof-av').textContent = (user.email||'??').slice(0,2).toUpperCase();
+    startListeners();
+  } else {
+    loginScreen.style.display = 'flex';
+    appScreen.style.display = 'none';
+  }
+});
+
+/* ===== NAVEGACIÓN ===== */
+document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll(`.nav-item[data-view="${item.dataset.view}"]`).forEach(i => i.classList.add('active'));
+    showView('view-' + item.dataset.view);
+  });
+});
+function showView(id){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ===== TOAST (idéntico a index.html) ===== */
+function showToast(msg, tipo){
+  tipo = tipo || 'ok';
+  const cont = document.getElementById('toast-container');
+  if(!cont) return;
+  const icon = tipo === 'ok' ? 'ti-circle-check' : (tipo === 'warn' ? 'ti-alert-triangle' : 'ti-alert-circle');
+  const el = document.createElement('div');
+  el.className = `toast t-${tipo}`;
+  el.innerHTML = `<i class="ti ${icon}"></i><span>${msg}</span>`;
+  cont.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, 3200);
+}
+
+function money(n){
+  n = Number(n) || 0;
+  return '$' + n.toLocaleString('es-CO');
+}
+function iniciales(nombre){
+  return (nombre||'??').split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
+}
+
+/* ===== DATOS EN MEMORIA ===== */
+let pacientesCache = {};   // id -> datos paciente (LECTURA, colección existente)
+let sesionesCache = {};    // id -> datos sesión (LECTURA, colección existente)
+let pagosCache = [];       // array de pagos (colección nueva "pagos")
+let planesCache = [];      // array de planes de cuotas (colección nueva "planesPago")
+let pagoEditingId = null;
+
+/* ===== LISTENERS FIRESTORE ===== */
+function startListeners(){
+  // Pacientes (solo lectura, colección existente — no se modifica)
+  onSnapshot(collection(db, 'pacientes'), (snap) => {
+    pacientesCache = {};
+    snap.forEach(d => { pacientesCache[d.id] = d.data(); });
+    poblarSelectPacientes();
+    renderTodo();
+  }, err => console.error('Error cargando pacientes:', err));
+
+  // Sesiones (solo lectura, colección existente — no se modifica)
+  onSnapshot(collection(db, 'sesiones'), (snap) => {
+    sesionesCache = {};
+    snap.forEach(d => { sesionesCache[d.id] = d.data(); });
+    renderTodo();
+  }, err => console.error('Error cargando sesiones:', err));
+
+  // Pagos (colección NUEVA, propia de este módulo)
+  const pagosQ = query(collection(db, 'pagos'), orderBy('fecha', 'desc'));
+  onSnapshot(pagosQ, (snap) => {
+    pagosCache = [];
+    snap.forEach(d => pagosCache.push({ id: d.id, ...d.data() }));
+    renderTodo();
+  }, err => {
+    console.error('Error cargando pagos:', err);
+    document.getElementById('lista-pagos').innerHTML = '<div class="empty-state">Error al cargar pagos.</div>';
+  });
+
+  // Planes de cuotas (colección NUEVA)
+  onSnapshot(collection(db, 'planesPago'), (snap) => {
+    planesCache = [];
+    snap.forEach(d => planesCache.push({ id: d.id, ...d.data() }));
+    renderPlanes();
+  }, err => console.error('Error cargando planes:', err));
+}
+
+function poblarSelectPacientes(){
+  const ids = Object.keys(pacientesCache).sort((a,b) => (pacientesCache[a].nombre||'').localeCompare(pacientesCache[b].nombre||''));
+  const opciones = ids.map(id => `<option value="${id}">${pacientesCache[id].nombre}</option>`).join('');
+  ['f-paciente','p-paciente','pl-paciente'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if(!sel) return;
+    const actual = sel.value;
+    const primero = sel.querySelector('option[value=""]');
+    sel.innerHTML = (primero ? primero.outerHTML : '<option value="">Todos los pacientes</option>') + opciones;
+    if(actual) sel.value = actual;
+  });
+}
+
+function renderTodo(){
+  renderDashboard();
+  renderListaPagos();
+  renderCartera();
+  renderAnalitica();
+}
+
+/* ============================================
+   CÁLCULO CENTRAL DE CARTERA
+   Un paciente está "en mora" si tiene saldoPendiente > 0 en algún pago
+   con estado pendiente/parcial y fecha de más de 30 días.
+   ============================================ */
+function calcularCartera(){
+  const porPaciente = {};
+  pagosCache.forEach(p => {
+    if(!p.pacienteId) return;
+    if(!porPaciente[p.pacienteId]){
+      porPaciente[p.pacienteId] = { saldo:0, ultimoPago:null, mora:false, diasMora:0, totalPagado:0 };
+    }
+    const acc = porPaciente[p.pacienteId];
+    if(p.estado === 'pendiente' || p.estado === 'parcial'){
+      acc.saldo += Number(p.saldoPendiente || p.monto || 0);
+      const dias = Math.floor((Date.now() - new Date(p.fecha).getTime()) / 86400000);
+      if(dias > 30){
+        acc.mora = true;
+        acc.diasMora = Math.max(acc.diasMora, dias);
+      }
+    }
+    if(p.estado === 'pagado'){
+      acc.totalPagado += Number(p.monto || 0);
+    }
+    if(!acc.ultimoPago || p.fecha > acc.ultimoPago) acc.ultimoPago = p.fecha;
+  });
+  return porPaciente;
+}
+
+/* ===== RENDER: DASHBOARD ===== */
+function renderDashboard(){
+  const hoy = new Date();
+  const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+
+  let cobradoMes = 0, cobradoTotal = 0, pendiente = 0, mora = 0;
+  const cartera = calcularCartera();
+
+  pagosCache.forEach(p => {
+    if(p.estado === 'pagado'){
+      cobradoTotal += Number(p.monto || 0);
+      if((p.fecha||'').slice(0,7) === mesActual) cobradoMes += Number(p.monto || 0);
+    }
+    if(p.estado === 'pendiente' || p.estado === 'parcial'){
+      pendiente += Number(p.saldoPendiente || p.monto || 0);
+    }
+  });
+  Object.values(cartera).forEach(c => { if(c.mora) mora += c.saldo; });
+
+  document.getElementById('kpi-cobrado-mes').textContent = money(cobradoMes);
+  document.getElementById('kpi-cobrado-total').textContent = money(cobradoTotal);
+  document.getElementById('kpi-pendiente').textContent = money(pendiente);
+  document.getElementById('kpi-mora').textContent = money(mora);
+
+  // Últimos pagos
+  const ultimos = [...pagosCache].sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0,6);
+  const contUltimos = document.getElementById('dash-ultimos');
+  if(ultimos.length === 0){
+    contUltimos.innerHTML = '<div class="rep-empty">Sin pagos registrados aún.</div>';
+  } else {
+    contUltimos.innerHTML = ultimos.map(p => filaPagoMini(p)).join('');
+  }
+
+  // Pacientes en mora
+  const contMora = document.getElementById('dash-mora');
+  const idsMora = Object.entries(cartera).filter(([id,c]) => c.mora);
+  if(idsMora.length === 0){
+    contMora.innerHTML = '<div class="rep-empty">Nadie está en mora. 🎉</div>';
+  } else {
+    contMora.innerHTML = idsMora.map(([id,c]) => {
+      const pac = pacientesCache[id] || {};
+      return `<div class="cart-card mora" onclick="window._verPacientePagos('${id}')">
+        <div class="cart-av" style="background:${pac.colorAv || '#B0503E'}">${iniciales(pac.nombre)}</div>
+        <div class="cart-info">
+          <div class="cart-nm">${pac.nombre || 'Paciente'}</div>
+          <div class="cart-sub">${c.diasMora} días de atraso</div>
+        </div>
+        <div class="cart-saldo">
+          <div class="cart-saldo-num mora">${money(c.saldo)}</div>
+          <div class="cart-saldo-lbl">saldo pendiente</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function filaPagoMini(p){
+  const pac = pacientesCache[p.pacienteId] || {};
+  const estLbl = { pagado:'Pagado', parcial:'Parcial', pendiente:'Pendiente' }[p.estado] || p.estado;
+  return `<div class="pago-card" onclick="window._abrirPago('${p.id}')">
+    <div class="pago-av" style="background:${pac.colorAv || '#4A7B6F'}">${iniciales(pac.nombre)}</div>
+    <div class="pago-info">
+      <div class="pago-nm">${pac.nombre || 'Paciente'}</div>
+      <div class="pago-sub">${tipoLbl(p.tipo)} · ${p.fecha}</div>
+    </div>
+    <span class="badge b-${p.estado}">${estLbl}</span>
+    <div>
+      <div class="pago-monto">${money(p.monto)}</div>
+    </div>
+  </div>`;
+}
+function tipoLbl(t){ return { sesion:'Por sesión', periodo:'Por período', abono:'Abono' }[t] || t; }
+
+/* ===== RENDER: LISTA DE PAGOS (con filtros) ===== */
+function renderListaPagos(){
+  const fp = document.getElementById('f-paciente').value;
+  const fe = document.getElementById('f-estado').value;
+  const fm = document.getElementById('f-metodo').value;
+  const ft = document.getElementById('f-tipo').value;
+  const fb = document.getElementById('f-busqueda').value.trim().toLowerCase();
+
+  let lista = [...pagosCache];
+  if(fp) lista = lista.filter(p => p.pacienteId === fp);
+  if(fe) lista = lista.filter(p => p.estado === fe);
+  if(fm) lista = lista.filter(p => p.metodo === fm);
+  if(ft) lista = lista.filter(p => p.tipo === ft);
+  if(fb) lista = lista.filter(p => (p.nota||'').toLowerCase().includes(fb));
+
+  const cont = document.getElementById('lista-pagos');
+  if(lista.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay pagos que coincidan con los filtros.</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(p => {
+    const pac = pacientesCache[p.pacienteId] || {};
+    const estLbl = { pagado:'Pagado', parcial:'Parcial', pendiente:'Pendiente' }[p.estado] || p.estado;
+    const metLbl = { efectivo:'Efectivo', transferencia:'Transferencia', otro:'Otro' }[p.metodo] || p.metodo;
+    return `<div class="pago-card" onclick="window._abrirPago('${p.id}')">
+      <div class="pago-av" style="background:${pac.colorAv || '#4A7B6F'}">${iniciales(pac.nombre)}</div>
+      <div class="pago-info">
+        <div class="pago-nm">${pac.nombre || 'Paciente'} ${p.numeroRecibo ? `<span style="color:var(--muted); font-weight:400;">· #${p.numeroRecibo}</span>` : ''}</div>
+        <div class="pago-sub">${tipoLbl(p.tipo)} ${p.nota ? '· ' + p.nota.slice(0,40) : ''}</div>
+      </div>
+      <span class="badge b-${p.metodo}">${metLbl}</span>
+      <span class="badge b-${p.estado}">${estLbl}</span>
+      <div>
+        <div class="pago-monto">${money(p.monto)}</div>
+        <div class="pago-fecha">${p.fecha}</div>
+      </div>
+      <div class="theme-toggle" style="color:var(--muted); border-color:var(--brd);" title="Imprimir recibo" onclick="event.stopPropagation(); window._imprimirRecibo('${p.id}')"><i class="ti ti-printer"></i></div>
+    </div>`;
+  }).join('');
+}
+['f-paciente','f-estado','f-metodo','f-tipo'].forEach(id => document.getElementById(id).addEventListener('change', renderListaPagos));
+document.getElementById('f-busqueda').addEventListener('input', renderListaPagos);
+
+/* ===== RENDER: CARTERA ===== */
+function renderCartera(){
+  const cartera = calcularCartera();
+  const ids = Object.keys(cartera).filter(id => cartera[id].saldo > 0)
+    .sort((a,b) => cartera[b].saldo - cartera[a].saldo);
+
+  let aldia = 0, enMora = 0, saldoTotal = 0;
+  Object.values(cartera).forEach(c => {
+    if(c.saldo > 0){
+      saldoTotal += c.saldo;
+      if(c.mora) enMora++; else aldia++;
+    }
+  });
+  document.getElementById('kpi-cartera-aldia').textContent = aldia;
+  document.getElementById('kpi-cartera-mora').textContent = enMora;
+  document.getElementById('kpi-cartera-saldo').textContent = money(saldoTotal);
+
+  const cont = document.getElementById('lista-cartera');
+  if(ids.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay saldos pendientes. Cartera al día. 🎉</div>';
+    return;
+  }
+  cont.innerHTML = ids.map(id => {
+    const pac = pacientesCache[id] || {};
+    const c = cartera[id];
+    return `<div class="cart-card ${c.mora ? 'mora' : ''}" onclick="window._filtrarPorPaciente('${id}')">
+      <div class="cart-av" style="background:${pac.colorAv || '#4A7B6F'}">${iniciales(pac.nombre)}</div>
+      <div class="cart-info">
+        <div class="cart-nm">${pac.nombre || 'Paciente'}</div>
+        <div class="cart-sub">Último pago: ${c.ultimoPago || '—'}</div>
+        ${c.mora ? `<span class="mora-chip">${c.diasMora} días de mora</span>` : ''}
+      </div>
+      <div class="cart-saldo">
+        <div class="cart-saldo-num ${c.mora ? 'mora' : 'ok'}">${money(c.saldo)}</div>
+        <div class="cart-saldo-lbl">saldo pendiente</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+window._filtrarPorPaciente = function(id){
+  document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-view="lista"]').forEach(i => i.classList.add('active'));
+  showView('view-lista');
+  document.getElementById('f-paciente').value = id;
+  renderListaPagos();
+};
+window._verPacientePagos = window._filtrarPorPaciente;
+
+/* ===== RENDER: ANALÍTICA ===== */
+function renderAnalitica(){
+  const pagados = pagosCache.filter(p => p.estado === 'pagado');
+
+  // Ingresos por mes (últimos 6 meses)
+  const hoy = new Date();
+  const meses = [];
+  for(let i = 5; i >= 0; i--){
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    meses.push({ key, lbl: d.toLocaleDateString('es-CO', { month:'long', year:'numeric' }), total: 0 });
+  }
+  pagados.forEach(p => {
+    const key = (p.fecha||'').slice(0,7);
+    const m = meses.find(x => x.key === key);
+    if(m) m.total += Number(p.monto || 0);
+  });
+  const maxMes = Math.max(1, ...meses.map(m => m.total));
+  const contMeses = document.getElementById('an-barras-mes');
+  contMeses.innerHTML = meses.map(m => `
+    <div class="rep-bar-row">
+      <div class="rep-bar-lbl">${m.lbl}</div>
+      <div class="rep-bar-track"><div class="rep-bar-fill" style="width:${Math.round((m.total/maxMes)*100)}%"></div></div>
+      <div class="rep-bar-val">${money(m.total)}</div>
+    </div>`).join('');
+
+  // Ranking pacientes por facturación
+  const porPac = {};
+  pagados.forEach(p => { if(p.pacienteId) porPac[p.pacienteId] = (porPac[p.pacienteId]||0) + Number(p.monto||0); });
+  const ranking = Object.entries(porPac).sort((a,b) => b[1]-a[1]).slice(0,8);
+  const maxPac = Math.max(1, ...ranking.map(r => r[1]));
+  const contRank = document.getElementById('an-ranking');
+  if(ranking.length === 0){
+    contRank.innerHTML = '<div class="rep-empty">Sin datos suficientes.</div>';
+  } else {
+    contRank.innerHTML = ranking.map(([id, total]) => {
+      const pac = pacientesCache[id] || {};
+      return `<div class="rep-bar-row">
+        <div class="rep-bar-lbl">${pac.nombre || 'Paciente'}</div>
+        <div class="rep-bar-track"><div class="rep-bar-fill" style="background:var(--warm); width:${Math.round((total/maxPac)*100)}%"></div></div>
+        <div class="rep-bar-val">${money(total)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Métodos de pago
+  const porMetodo = { efectivo:0, transferencia:0, otro:0 };
+  pagados.forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + Number(p.monto||0); });
+  const totalMet = Object.values(porMetodo).reduce((a,b)=>a+b, 0);
+  const contMet = document.getElementById('an-metodos');
+  if(totalMet === 0){
+    contMet.innerHTML = '<div class="rep-empty">Sin datos suficientes.</div>';
+  } else {
+    const colores = { efectivo:'var(--muted)', transferencia:'var(--virt-txt)', otro:'var(--warm)' };
+    contMet.innerHTML = Object.entries(porMetodo).map(([met, total]) => {
+      const pct = totalMet > 0 ? Math.round((total/totalMet)*100) : 0;
+      return `<div class="rep-bar-row">
+        <div class="rep-bar-lbl">${{efectivo:'Efectivo',transferencia:'Transferencia',otro:'Otro'}[met]}</div>
+        <div class="rep-bar-track"><div class="rep-bar-fill" style="background:${colores[met]}; width:${pct}%"></div></div>
+        <div class="rep-bar-val">${pct}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Cumplimiento de pago
+  const total = pagosCache.length;
+  const okCount = pagosCache.filter(p => p.estado === 'pagado').length;
+  const pct = total > 0 ? Math.round((okCount/total)*100) : 0;
+  const contCumpl = document.getElementById('an-cumplimiento');
+  if(total === 0){
+    contCumpl.innerHTML = '<div class="rep-empty">Sin datos suficientes.</div>';
+  } else {
+    contCumpl.innerHTML = `<div class="rep-bar-row">
+      <div class="rep-bar-lbl">Pagos completados</div>
+      <div class="rep-bar-track"><div class="rep-bar-fill" style="width:${pct}%"></div></div>
+      <div class="rep-bar-val">${pct}%</div>
+    </div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:8px;">${okCount} de ${total} registros de pago están completos.</div>`;
+  }
+}
+
+/* ===== RENDER: PLANES DE CUOTAS ===== */
+function renderPlanes(){
+  const cont = document.getElementById('lista-planes');
+  if(planesCache.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay planes de cuotas registrados aún.</div>';
+    return;
+  }
+  cont.innerHTML = planesCache.map(pl => {
+    const pac = pacientesCache[pl.pacienteId] || {};
+    const cuotas = pl.cuotas || [];
+    const pagadas = cuotas.filter(c => c.pagada).length;
+    const hoy = new Date().toISOString().slice(0,10);
+    return `<div class="plan-card">
+      <div class="plan-hdr">
+        <div>
+          <div class="plan-nm">${pac.nombre || 'Paciente'} — ${pl.concepto || 'Plan de pago'}</div>
+          <div class="plan-total">${money(pl.montoTotal)} en ${cuotas.length} cuotas · ${pagadas}/${cuotas.length} pagadas</div>
+        </div>
+      </div>
+      <div class="cuota-grid">
+        ${cuotas.map(c => {
+          const vencida = !c.pagada && c.fecha < hoy;
+          return `<div class="cuota-chip ${c.pagada ? 'pagada' : (vencida ? 'vencida' : '')}"
+            title="Cuota ${c.n} · ${money(c.monto)} · ${c.fecha}"
+            onclick="window._toggleCuota('${pl.id}', ${c.n})">${c.n}</div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+/* ===== MODAL: NUEVO / EDITAR PAGO ===== */
+const pagoOverlay = document.getElementById('pago-modal-overlay');
+function abrirPagoModal(id){
+  pagoEditingId = id || null;
+  document.getElementById('pago-modal-err').textContent = '';
+  const p = id ? pagosCache.find(x => x.id === id) : null;
+
+  document.getElementById('pago-modal-title').textContent = p ? 'Editar pago' : 'Nuevo pago';
+  document.getElementById('p-paciente').value = p ? p.pacienteId : (document.getElementById('f-paciente').value || '');
+  document.getElementById('p-tipo').value = p ? p.tipo : 'sesion';
+  document.getElementById('p-monto').value = p ? p.monto : '';
+  document.getElementById('p-fecha').value = p ? p.fecha : new Date().toISOString().slice(0,10);
+  document.getElementById('p-metodo').value = p ? p.metodo : 'efectivo';
+  document.getElementById('p-estado').value = p ? p.estado : 'pagado';
+  document.getElementById('p-saldo').value = p ? (p.saldoPendiente || '') : '';
+  document.getElementById('p-nota').value = p ? (p.nota || '') : '';
+
+  poblarSelectSesiones();
+  document.getElementById('p-sesion').value = p ? (p.sesionId || '') : '';
+  actualizarVisibilidadCamposPago();
+  pagoOverlay.style.display = 'flex';
+}
+function cerrarPagoModal(){ pagoOverlay.style.display = 'none'; }
+document.getElementById('btn-nuevo-pago').addEventListener('click', () => abrirPagoModal(null));
+document.getElementById('pago-modal-close').addEventListener('click', cerrarPagoModal);
+document.getElementById('pago-modal-cancel').addEventListener('click', cerrarPagoModal);
+window._abrirPago = abrirPagoModal;
+
+function poblarSelectSesiones(){
+  const pacId = document.getElementById('p-paciente').value;
+  const sel = document.getElementById('p-sesion');
+  sel.innerHTML = '<option value="">Selecciona una sesión</option>';
+  if(!pacId) return;
+  Object.entries(sesionesCache)
+    .filter(([id, s]) => s.pacienteId === pacId)
+    .sort((a,b) => (b[1].fecha||'').localeCompare(a[1].fecha||''))
+    .forEach(([id, s]) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = `Sesión #${s.numeroSesion || '?'} · ${s.fechaStr || s.fecha || ''} · ${s.hora || ''}`;
+      sel.appendChild(opt);
+    });
+}
+document.getElementById('p-paciente').addEventListener('change', poblarSelectSesiones);
+
+function actualizarVisibilidadCamposPago(){
+  const tipo = document.getElementById('p-tipo').value;
+  document.getElementById('p-sesion-wrap').style.display = tipo === 'sesion' ? 'block' : 'none';
+  const estado = document.getElementById('p-estado').value;
+  document.getElementById('p-saldo-wrap').style.display = (estado === 'parcial') ? 'block' : 'none';
+}
+document.getElementById('p-tipo').addEventListener('change', actualizarVisibilidadCamposPago);
+document.getElementById('p-estado').addEventListener('change', actualizarVisibilidadCamposPago);
+
+document.getElementById('pago-modal-save').addEventListener('click', async () => {
+  const errEl = document.getElementById('pago-modal-err');
+  errEl.textContent = '';
+
+  const pacienteId = document.getElementById('p-paciente').value;
+  const tipo = document.getElementById('p-tipo').value;
+  const sesionId = document.getElementById('p-sesion').value || null;
+  const monto = Number(document.getElementById('p-monto').value);
+  const fecha = document.getElementById('p-fecha').value;
+  const metodo = document.getElementById('p-metodo').value;
+  const estado = document.getElementById('p-estado').value;
+  const saldoPendiente = estado === 'parcial' ? Number(document.getElementById('p-saldo').value || 0) : 0;
+  const nota = document.getElementById('p-nota').value.trim();
+
+  if(!pacienteId){ errEl.textContent = 'Selecciona un paciente.'; return; }
+  if(!monto || monto <= 0){ errEl.textContent = 'Ingresa un monto válido.'; return; }
+  if(!fecha){ errEl.textContent = 'Selecciona la fecha de pago.'; return; }
+
+  const datos = { pacienteId, tipo, sesionId, monto, fecha, metodo, estado, saldoPendiente, nota };
+
+  try{
+    if(pagoEditingId){
+      await updateDoc(doc(db, 'pagos', pagoEditingId), datos);
+      showToast('Pago actualizado.', 'ok');
+    } else {
+      datos.numeroRecibo = await siguienteNumeroRecibo();
+      datos.creadoEn = new Date().toISOString();
+      await addDoc(collection(db, 'pagos'), datos);
+      showToast('Pago registrado.', 'ok');
+    }
+    cerrarPagoModal();
+  } catch(err){
+    console.error(err);
+    errEl.textContent = 'No pudimos guardar el pago. Intenta de nuevo.';
+  }
+});
+
+async function siguienteNumeroRecibo(){
+  const max = pagosCache.reduce((m, p) => Math.max(m, p.numeroRecibo || 0), 0);
+  return max + 1;
+}
+
+/* ===== MODAL: NUEVO PLAN DE CUOTAS ===== */
+const planOverlay = document.getElementById('plan-modal-overlay');
+document.getElementById('btn-nuevo-plan').addEventListener('click', () => {
+  document.getElementById('plan-modal-err').textContent = '';
+  document.getElementById('pl-paciente').value = '';
+  document.getElementById('pl-concepto').value = '';
+  document.getElementById('pl-total').value = '';
+  document.getElementById('pl-num-cuotas').value = 4;
+  document.getElementById('pl-fecha-inicio').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pl-frecuencia').value = 'mensual';
+  planOverlay.style.display = 'flex';
+});
+document.getElementById('plan-modal-close').addEventListener('click', () => planOverlay.style.display = 'none');
+document.getElementById('plan-modal-cancel').addEventListener('click', () => planOverlay.style.display = 'none');
+
+document.getElementById('plan-modal-save').addEventListener('click', async () => {
+  const errEl = document.getElementById('plan-modal-err');
+  errEl.textContent = '';
+
+  const pacienteId = document.getElementById('pl-paciente').value;
+  const concepto = document.getElementById('pl-concepto').value.trim();
+  const montoTotal = Number(document.getElementById('pl-total').value);
+  const numCuotas = Number(document.getElementById('pl-num-cuotas').value);
+  const fechaInicio = document.getElementById('pl-fecha-inicio').value;
+  const frecuencia = document.getElementById('pl-frecuencia').value;
+
+  if(!pacienteId){ errEl.textContent = 'Selecciona un paciente.'; return; }
+  if(!montoTotal || montoTotal <= 0){ errEl.textContent = 'Ingresa un monto total válido.'; return; }
+  if(!numCuotas || numCuotas < 1){ errEl.textContent = 'Ingresa un número de cuotas válido.'; return; }
+  if(!fechaInicio){ errEl.textContent = 'Selecciona la fecha de la primera cuota.'; return; }
+
+  const montoCuota = Math.round(montoTotal / numCuotas);
+  const diasIncremento = { mensual:30, quincenal:15, semanal:7 }[frecuencia];
+  const cuotas = [];
+  const base = new Date(fechaInicio + 'T00:00:00');
+  for(let i = 0; i < numCuotas; i++){
+    const d = new Date(base.getTime() + (i * diasIncremento * 86400000));
+    cuotas.push({ n: i+1, fecha: d.toISOString().slice(0,10), monto: montoCuota, pagada: false, pagoId: null });
+  }
+
+  try{
+    await addDoc(collection(db, 'planesPago'), { pacienteId, concepto, montoTotal, numCuotas, frecuencia, cuotas, creadoEn: new Date().toISOString() });
+    showToast('Plan de cuotas creado.', 'ok');
+    planOverlay.style.display = 'none';
+  } catch(err){
+    console.error(err);
+    errEl.textContent = 'No pudimos crear el plan. Intenta de nuevo.';
+  }
+});
+
+/* ===== RECIBO PDF INDIVIDUAL (mismo patrón que exportarReportePDF en index.html) ===== */
+window._imprimirRecibo = function(pagoId){
+  const p = pagosCache.find(x => x.id === pagoId);
+  if(!p) return;
+  const pac = pacientesCache[p.pacienteId] || {};
+  const colorAcento = '#4A7B6F';
+  const fechaEmision = new Date().toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+  const estLbl = { pagado:'Pagado', parcial:'Pago parcial', pendiente:'Pendiente' }[p.estado] || p.estado;
+  const metLbl = { efectivo:'Efectivo', transferencia:'Transferencia', otro:'Otro' }[p.metodo] || p.metodo;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Recibo #${p.numeroRecibo || ''} — ${NOMBRE_CONSULTORIO}</title>
+  <style>
+    body{font-family:sans-serif;padding:40px;max-width:620px;margin:0 auto;color:#0f172a;}
+    @media print{.no-print{display:none!important}}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid ${colorAcento};padding-bottom:18px;margin-bottom:22px;}
+    .folio{font-size:13px;color:#64748b;}
+    .section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin-bottom:14px;}
+    .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;}
+    .row .k{color:#64748b;}
+    .row .v{font-weight:600;}
+    .monto-total{font-size:28px;font-weight:700;color:${colorAcento};text-align:center;margin:18px 0;}
+    .estado-chip{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:${p.estado==='pagado'?'#E3EDE9':'#F5EAD8'};color:${p.estado==='pagado'?colorAcento:'#B8874A'};}
+  </style></head><body>
+  <button class="no-print" onclick="window.print()" style="padding:12px;background:${colorAcento};color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-bottom:20px;width:100%;">🖨️ Imprimir / Guardar como PDF</button>
+  <div class="header">
+    <div>
+      <h2 style="margin:0;">${NOMBRE_CONSULTORIO}</h2>
+      <div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;font-size:13px;">RECIBO DE PAGO</div>
+    </div>
+    <div class="folio">Folio<br><strong>#${String(p.numeroRecibo || '—').padStart(4,'0')}</strong></div>
+  </div>
+  <div class="section">
+    <div class="row"><div class="k">Paciente</div><div class="v">${pac.nombre || '—'}</div></div>
+    <div class="row"><div class="k">Concepto</div><div class="v">${tipoLbl(p.tipo)}</div></div>
+    <div class="row"><div class="k">Fecha de pago</div><div class="v">${p.fecha}</div></div>
+    <div class="row"><div class="k">Método</div><div class="v">${metLbl}</div></div>
+    <div class="row"><div class="k">Estado</div><div class="v"><span class="estado-chip">${estLbl}</span></div></div>
+    ${p.estado === 'parcial' ? `<div class="row"><div class="k">Saldo pendiente</div><div class="v">${money(p.saldoPendiente)}</div></div>` : ''}
+    ${p.nota ? `<div class="row"><div class="k">Nota</div><div class="v">${p.nota}</div></div>` : ''}
+  </div>
+  <div class="monto-total">${money(p.monto)}</div>
+  <p style="text-align:center;font-size:0.75rem;color:#94a3b8;margin-top:30px;">Recibo generado por PsicoGestión — ${fechaEmision}</p>
+  </body></html>`;
+
+  const win = window.open('', '_blank', 'width=700,height=800');
+  win.document.write(html);
+  win.document.close();
+};
+
+/* ===== EXPORTAR ANALÍTICA PDF (mismo patrón exportarReportePDF de index.html) ===== */
+document.getElementById('btn-exportar-analitica').addEventListener('click', () => {
+  const pagados = pagosCache.filter(p => p.estado === 'pagado');
+  const colorAcento = '#4A7B6F';
+  const fecha = new Date().toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+  const totalCobrado = pagados.reduce((s,p) => s + Number(p.monto||0), 0);
+  const cartera = calcularCartera();
+  const saldoTotal = Object.values(cartera).reduce((s,c) => s + c.saldo, 0);
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Reporte financiero — ${NOMBRE_CONSULTORIO}</title>
+  <style>
+    body{font-family:sans-serif;padding:40px;max-width:850px;margin:0 auto;color:#0f172a;}
+    @media print{.no-print{display:none!important}}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:4px solid ${colorAcento};padding-bottom:20px;margin-bottom:24px;}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+    .card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;}
+    .card-num{font-size:22px;font-weight:700;color:#0f172a;}
+    .card-lbl{font-size:12px;color:#64748b;margin-top:4px;}
+  </style></head><body>
+  <button class="no-print" onclick="window.print()" style="padding:12px;background:${colorAcento};color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;margin-bottom:20px;width:100%;">🖨️ Imprimir / Guardar como PDF</button>
+  <div class="header">
+    <div><h1 style="margin:0;">${NOMBRE_CONSULTORIO}</h1><div style="color:${colorAcento};font-weight:bold;letter-spacing:1px;margin-top:4px;">REPORTE FINANCIERO</div></div>
+    <div style="text-align:right;font-size:0.9rem;"><strong>Fecha de exportación:</strong><br>${fecha}</div>
+  </div>
+  <div class="cards">
+    <div class="card"><div class="card-num">${money(totalCobrado)}</div><div class="card-lbl">Total cobrado histórico</div></div>
+    <div class="card"><div class="card-num" style="color:#B0503E">${money(saldoTotal)}</div><div class="card-lbl">Saldo pendiente total</div></div>
+    <div class="card"><div class="card-num">${pagosCache.length}</div><div class="card-lbl">Total de registros</div></div>
+  </div>
+  <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión — ${fecha}</p>
+  </body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=800');
+  win.document.write(html);
+  win.document.close();
+});
+
+window._toggleCuota = async function(planId, n){
+  const plan = planesCache.find(p => p.id === planId);
+  if(!plan) return;
+  const cuotas = plan.cuotas.map(c => c.n === n ? { ...c, pagada: !c.pagada } : c);
+  try{
+    await updateDoc(doc(db, 'planesPago', planId), { cuotas });
+    showToast(`Cuota ${n} actualizada.`, 'ok');
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos actualizar la cuota.', 'err');
+  }
+};
+
+</script>
+</body>
+</html>
