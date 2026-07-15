@@ -4,7 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zamora Psicología — Portal del paciente</title>
-<!-- V1.3: se completan las piezas de V1.2 que habían quedado solo con el CSS
+<!-- V1.4: se agrega el punto (5) pendiente — botón "Exportar mi historia" en la
+     topbar, genera un HTML aparte (mismo patrón que exportarReportePDF() de
+     index.html: arma el HTML, abre pestaña nueva, botón "Imprimir/Guardar como
+     PDF" con window.print(); no se agregó ninguna librería de PDF nueva).
+     A diferencia del reporte admin (que es general, todos los pacientes), esta
+     versión es reducida y solo usa las sesiones que el propio paciente ya ve
+     en pantalla (mismas variables ya cargadas por cargarSesiones(), sin
+     consulta nueva a Firestore ni datos de otros pacientes).
+     Punto (4) — "Necesito reagendar/cancelar" — sigue pendiente.
+     Este archivo sigue siendo de SOLO LECTURA: no se agregó ningún write nuevo.
+
+     V1.3: se completan las piezas de V1.2 que habían quedado solo con el CSS
      listo pero sin HTML ni lógica JS. Ahora sí quedan activas:
      (1) tarjeta de "próxima sesión" destacada arriba de las pestañas (se toma
          de las sesiones ya cargadas con cargarSesiones(), estado "upcoming",
@@ -197,6 +208,7 @@ button, input{font-family:'Inter',sans-serif;}
       <div class="asub">Portal del paciente</div>
     </div>
     <div class="topbar-actions">
+      <button class="icon-btn-top" id="export-pdf-btn" aria-label="Exportar mi historia"><i class="ti ti-file-download"></i></button>
       <button class="icon-btn-top" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
       <button class="icon-btn-top" id="logout-btn" aria-label="Cerrar sesión"><i class="ti ti-logout"></i></button>
     </div>
@@ -315,6 +327,7 @@ document.getElementById('olvide-pass').addEventListener('click', () => {
 let miPacienteId = null;
 let miPaciente = null;
 let modoPreview = false;
+let misSesiones = []; // V1.4: cache de sesiones visibles del propio paciente, para reusar en exportarMiHistoriaPDF()
 
 /* ===== VISTA PREVIA ADMIN (V1.1) =====
    Si la URL trae ?preview=ID_PACIENTE, en vez del flujo normal de paciente
@@ -451,9 +464,11 @@ async function cargarSesiones(){
       cont.innerHTML = '<div class="empty-state">Aún no hay sesiones compartidas contigo.</div>';
       proximaWrap.innerHTML = '';
       contadorWrap.innerHTML = '';
+      misSesiones = [];
       return;
     }
     const sesionesRaw = snap.docs.map(d => d.data());
+    misSesiones = sesionesRaw; // V1.4: cache para exportar PDF
     const sesiones = sesionesRaw.slice().sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||''));
 
     /* ===== V1.3: próxima sesión destacada =====
