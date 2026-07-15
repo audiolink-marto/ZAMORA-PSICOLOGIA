@@ -614,9 +614,8 @@ button, input{font-family:'Inter',sans-serif;}
           <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
         </div>
       </div>
-    </aside>
-
-    <main class="main">
+      <div style="font-size:10px; color:var(--sb-txt-dim); text-align:center; padding:10px 8px 4px;">Diseñado por: Marto 🧠 · martowave@gmail.com</div>
+    </aside>    <main class="main">
       <!-- VISTA AGENDA -->
       <section class="view active" id="view-agenda">
         <div class="mhdr">
@@ -2525,6 +2524,7 @@ function generarYAbrirHistoriaPDF(p, sesiones, subtitulo){
   </div>
   <table><thead><tr><th>Sesión</th><th>Fecha / Modalidad</th><th>Nota</th></tr></thead><tbody>${filasSesiones}</tbody></table>
   <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión.</p>
+  <p style="text-align:center;margin-top:4px;font-size:0.7rem;color:#B8874A;">Diseñado por: Marto 🧠 · martowave@gmail.com</p>
   </body></html>`;
 
   const win = window.open('', '_blank', 'width=900,height=800');
@@ -2776,6 +2776,7 @@ function exportarReportePDF(){
     </div>
   </div>
   <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión — ${fecha}</p>
+  <p style="text-align:center;margin-top:4px;font-size:0.7rem;color:#B8874A;">Diseñado por: Marto 🧠 · martowave@gmail.com</p>
   </body></html>`;
 
   const win = window.open('', '_blank', 'width=900,height=800');
