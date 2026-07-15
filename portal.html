@@ -4,7 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zamora Psicología — Portal del paciente</title>
-<!-- V1.1: modo vista previa admin (?preview=ID_PACIENTE, valida contra equipoInterno,
+<!-- V1.3: se completan las piezas de V1.2 que habían quedado solo con el CSS
+     listo pero sin HTML ni lógica JS. Ahora sí quedan activas:
+     (1) tarjeta de "próxima sesión" destacada arriba de las pestañas (se toma
+         de las sesiones ya cargadas con cargarSesiones(), estado "upcoming",
+         la más cercana; sin consultas nuevas a Firestore).
+     (2) contador de sesiones completadas / constancia (cuenta estado "done"
+         de las mismas sesiones ya cargadas).
+     (3) estado de pagos más claro ("Al día" vs "Pendiente: $X", reutilizando
+         el mismo campo "estado" de pagos: pagado/parcial/pendiente; se calcula
+         sobre los pagos ya cargados con cargarPagos()).
+     (6) mensaje de bienvenida editable por el consultorio (campo opcional
+         "mensajeBienvenida" en pacientes/{id}; si no existe, se usa el texto
+         genérico de siempre). Aplica tanto en login normal como en modo preview.
+     Se agrega también el footer de créditos de diseño (el CSS ya existía
+     desde V1.2, faltaba el <div> en el body).
+     (5) exportar historia en PDF queda pendiente para otra ronda.
+     Punto (4) — "Necesito reagendar/cancelar" — sigue pendiente, sin tocar
+     firestore.rules todavía.
+     Este archivo sigue siendo de SOLO LECTURA: no se agregó ningún write nuevo.
+
+     V1.2: se dejó preparado el CSS de próxima sesión / contador / estado de
+     pagos / créditos, pero el HTML y la lógica JS no se habían escrito.
+
+     V1.1: modo vista previa admin (?preview=ID_PACIENTE, valida contra equipoInterno,
      sin login, banner fijo de aviso) y bloqueo de acceso si portalRevocado=true en
      el login normal del paciente.
      V1.0: portal de solo lectura para pacientes. Login propio (Firebase Auth, mismo
@@ -120,6 +143,25 @@ button, input{font-family:'Inter',sans-serif;}
 .saldo-banner{background:var(--warm-lt); border:0.5px solid var(--warm); border-radius:10px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;}
 .saldo-banner .lbl{font-size:12.5px; color:var(--txt);}
 .saldo-banner .num{font-size:18px; font-weight:700; color:var(--warm);}
+
+/* ===== V1.2: PRÓXIMA SESIÓN ===== */
+.proxima-card{background:var(--pri); color:#fff; border-radius:12px; padding:16px 18px; margin-bottom:12px;}
+.proxima-lbl{font-size:11.5px; opacity:.85; text-transform:uppercase; letter-spacing:.4px; font-weight:600;}
+.proxima-fecha{font-size:18px; font-weight:700; margin-top:4px;}
+.proxima-sub{font-size:12.5px; opacity:.9; margin-top:2px;}
+
+/* ===== V1.2: CONTADOR DE CONSTANCIA ===== */
+.contador-card{display:flex; align-items:center; gap:10px; background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:12px 16px; margin-bottom:14px;}
+.contador-num{font-size:20px; font-weight:700; color:var(--pri);}
+.contador-txt{font-size:12.5px; color:var(--muted);}
+
+/* ===== V1.2: ESTADO DE PAGOS RESUMIDO ===== */
+.pago-estado-banner{border-radius:10px; padding:14px 16px; margin-bottom:14px; font-size:13px; font-weight:600;}
+.pago-estado-ok{background:var(--activo-lt); color:var(--activo);}
+.pago-estado-pend{background:var(--danger-lt); color:var(--danger);}
+
+/* ===== V1.2: CRÉDITOS ===== */
+.creditos-footer{text-align:center; font-size:11px; color:var(--muted); padding:22px 0 10px;}
 </style>
 </head>
 <body>
@@ -162,8 +204,11 @@ button, input{font-family:'Inter',sans-serif;}
 
   <div class="container">
     <div class="welcome" id="bienvenida">Hola —</div>
-    <div class="welcome-sub">Este es tu espacio personal. Aquí puedes ver la información que tu psicólogo/a ha compartido contigo.</div>
+    <div class="welcome-sub" id="bienvenida-sub">Este es tu espacio personal. Aquí puedes ver la información que tu psicólogo/a ha compartido contigo.</div>
 
+    <div id="proxima-sesion-wrap"></div>
+    <div id="contador-wrap"></div>
+    <div id="pago-estado-wrap"></div>
     <div id="saldo-banner-wrap"></div>
 
     <div class="tabs">
@@ -190,6 +235,8 @@ button, input{font-family:'Inter',sans-serif;}
         <div class="timeline" id="bitacora-portal"><div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div></div>
       </div>
     </div>
+
+    <div class="creditos-footer">Diseñado por: Marto 🧠 · martowave@gmail.com</div>
   </div>
 </div>
 
@@ -322,6 +369,9 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById('preview-banner').style.display = 'block';
       document.getElementById('preview-banner-nombre').textContent = miPaciente.nombre || previewId;
       document.getElementById('bienvenida').textContent = `Hola, ${(miPaciente.nombre||'').split(' ')[0] || ''} —`;
+      if(miPaciente.mensajeBienvenida){
+        document.getElementById('bienvenida-sub').textContent = miPaciente.mensajeBienvenida;
+      }
 
       cargarSesiones();
       cargarPagos();
@@ -357,6 +407,9 @@ onAuthStateChanged(auth, async (user) => {
       loginScreen.style.display = 'none';
       appScreen.style.display = 'block';
       document.getElementById('bienvenida').textContent = `Hola, ${(miPaciente.nombre||'').split(' ')[0] || ''} —`;
+      if(miPaciente.mensajeBienvenida){
+        document.getElementById('bienvenida-sub').textContent = miPaciente.mensajeBienvenida;
+      }
 
       cargarSesiones();
       cargarPagos();
@@ -392,8 +445,38 @@ async function cargarSesiones(){
       where('pacienteId', '==', miPacienteId),
       where('visiblePaciente', '==', true));
     const snap = await getDocs(q);
-    if(snap.empty){ cont.innerHTML = '<div class="empty-state">Aún no hay sesiones compartidas contigo.</div>'; return; }
-    const sesiones = snap.docs.map(d => d.data()).sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||''));
+    const proximaWrap = document.getElementById('proxima-sesion-wrap');
+    const contadorWrap = document.getElementById('contador-wrap');
+    if(snap.empty){
+      cont.innerHTML = '<div class="empty-state">Aún no hay sesiones compartidas contigo.</div>';
+      proximaWrap.innerHTML = '';
+      contadorWrap.innerHTML = '';
+      return;
+    }
+    const sesionesRaw = snap.docs.map(d => d.data());
+    const sesiones = sesionesRaw.slice().sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||''));
+
+    /* ===== V1.3: próxima sesión destacada =====
+       Tomamos las sesiones con estado "upcoming" y elegimos la de fecha más
+       cercana (fechaStr más chica = más próxima). No se hace consulta nueva. */
+    const proximas = sesionesRaw.filter(s => s.estado === 'upcoming').sort((a,b) => (a.fechaStr||'').localeCompare(b.fechaStr||''));
+    proximaWrap.innerHTML = proximas.length === 0 ? '' : `
+      <div class="proxima-card">
+        <div class="proxima-lbl">Próxima sesión</div>
+        <div class="proxima-fecha">${proximas[0].fechaStr || '—'} · ${proximas[0].hora || '—'}</div>
+        <div class="proxima-sub">${proximas[0].modalidad === 'virtual' ? 'Virtual' : 'Presencial'}</div>
+      </div>`;
+
+    /* ===== V1.3: contador de constancia =====
+       Contamos sesiones con estado "done" y mostramos la fecha de la primera
+       (fechaStr más chica entre las "done"). */
+    const completadas = sesionesRaw.filter(s => s.estado === 'done').sort((a,b) => (a.fechaStr||'').localeCompare(b.fechaStr||''));
+    contadorWrap.innerHTML = completadas.length === 0 ? '' : `
+      <div class="contador-card">
+        <div class="contador-num">${completadas.length}</div>
+        <div class="contador-txt">Llevas ${completadas.length} sesión${completadas.length === 1 ? '' : 'es'} desde ${completadas[0].fechaStr || '—'}</div>
+      </div>`;
+
     cont.innerHTML = sesiones.map(s => `
       <div class="card">
         <div class="crow">
@@ -422,6 +505,7 @@ async function cargarPagos(){
     if(snap.empty){
       cont.innerHTML = '<div class="empty-state">Aún no hay pagos compartidos contigo.</div>';
       bannerWrap.innerHTML = '';
+      document.getElementById('pago-estado-wrap').innerHTML = '';
       return;
     }
     const pagos = snap.docs.map(d => d.data()).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
@@ -430,6 +514,13 @@ async function cargarPagos(){
     bannerWrap.innerHTML = saldo > 0
       ? `<div class="saldo-banner"><div class="lbl">Saldo pendiente</div><div class="num">${money(saldo)}</div></div>`
       : '';
+
+    /* ===== V1.3: estado de pagos resumido (semáforo) =====
+       Reusa el mismo "saldo" ya calculado arriba, mismo campo "estado". */
+    const estadoWrap = document.getElementById('pago-estado-wrap');
+    estadoWrap.innerHTML = saldo > 0
+      ? `<div class="pago-estado-banner pago-estado-pend">Pendiente: ${money(saldo)}</div>`
+      : `<div class="pago-estado-banner pago-estado-ok">Al día</div>`;
 
     const estLbl = { pagado:'Pagado', parcial:'Parcial', pendiente:'Pendiente' };
     const tipoLbl = { sesion:'Pago por sesión', periodo:'Pago por período', abono:'Abono' };
