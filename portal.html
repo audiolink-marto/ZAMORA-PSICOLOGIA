@@ -4,7 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zamora Psicología — Portal del paciente</title>
-<!-- V1.4: se agrega el punto (5) pendiente — botón "Exportar mi historia" en la
+<!-- V1.6: se expande el PDF de "Exportar mi historia". Ahora incluye, además
+     de sesiones: pagos (detalle completo: fecha/tipo/monto/estado/nota) y
+     diagnóstico (base + bitácora/evolución completa). Se agregaron caches
+     misPagos, miDxBase y miBitacora (poblados por cargarPagos() y
+     cargarDiagnostico(), sin consultas nuevas a Firestore). Paleta del PDF
+     cambiada de verde a dorado (#B8874A) + azul oscuro (#1A2332), por pedido
+     explícito (no le gustaba el verde). No se tocó ninguna otra función.
+
+     V1.5: se corrige el botón "Exportar mi historia" (export-pdf-btn), que en V1.4
+     quedó en el HTML pero sin función ni listener asociado (no hacía nada al
+     hacer clic). Se agrega exportarMiHistoriaPDF(), que arma un HTML simple
+     solo con las sesiones ya cacheadas en misSesiones, abre pestaña nueva y
+     dispara window.print() (mismo patrón que exportarReportePDF() de
+     index.html). No se agregó pagos ni diagnóstico, solo sesiones, tal como
+     estaba planeado desde V1.4. No se tocó ninguna otra función existente.
+
+     V1.4: se agrega el punto (5) pendiente — botón "Exportar mi historia" en la
      topbar, genera un HTML aparte (mismo patrón que exportarReportePDF() de
      index.html: arma el HTML, abre pestaña nueva, botón "Imprimir/Guardar como
      PDF" con window.print(); no se agregó ninguna librería de PDF nueva).
@@ -276,6 +292,69 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+/* ===== V1.6: EXPORTAR MI HISTORIA (PDF) — versión completa =====
+   Ahora incluye sesiones, pagos (detalle completo) y diagnóstico
+   (base + bitácora), todo desde los datos ya cacheados por cargarSesiones(),
+   cargarPagos() y cargarDiagnostico() (sin consultas nuevas a Firestore).
+   Paleta del PDF: dorado --warm (#B8874A) + azul oscuro --sb (#1A2332),
+   en vez del verde --pri del portal. */
+document.getElementById('export-pdf-btn').addEventListener('click', exportarMiHistoriaPDF);
+function exportarMiHistoriaPDF(){
+  if((!misSesiones || misSesiones.length === 0) && (!misPagos || misPagos.length === 0) && (!miDxBase || miDxBase.length === 0) && (!miBitacora || miBitacora.length === 0)){
+    alert('Aún no hay información para exportar.');
+    return;
+  }
+  const nombre = (miPaciente && miPaciente.nombre) || 'Paciente';
+  const fechaHoy = new Date().toLocaleDateString('es-CO');
+  const estLbl = { pagado:'Pagado', parcial:'Parcial', pendiente:'Pendiente' };
+  const tipoLbl = { sesion:'Pago por sesión', periodo:'Pago por período', abono:'Abono' };
+  const estadoDxLbl = { activo:'Activo', remision:'En remisión', resuelto:'Resuelto' };
+
+  const sesionesOrdenadas = misSesiones.slice().sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||''));
+  const filasSesiones = sesionesOrdenadas.map(s => `
+    <tr><td>${s.fechaStr || '—'}</td><td>${s.hora || '—'}</td><td>${s.duracion || '—'}</td><td>${s.modalidad === 'virtual' ? 'Virtual' : 'Presencial'}</td></tr>`).join('');
+
+  const filasPagos = misPagos.map(p => `
+    <tr><td>${p.fecha || '—'}</td><td>${tipoLbl[p.tipo] || p.tipo || '—'}</td><td>${money(p.monto)}</td><td>${estLbl[p.estado] || p.estado || '—'}</td><td>${p.nota || ''}</td></tr>`).join('');
+
+  const filasDxBase = miDxBase.map(d => `
+    <tr><td>${d.codigo || '—'}</td><td>${d.sistema || '—'}</td><td>${d.descripcion || '—'}</td><td>${d.fecha || '—'}</td><td>${estadoDxLbl[d.estado] || d.estado || '—'}</td></tr>`).join('');
+
+  const filasBitacora = miBitacora.map(b => `
+    <tr><td style="white-space:nowrap;">${b.fecha || '—'}</td><td>${b.nota || ''}</td></tr>`).join('');
+
+  const seccion = (titulo, tabla, encabezados) => tabla ? `
+    <h2>${titulo}</h2>
+    <table><thead><tr>${encabezados.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${tabla}</tbody></table>` : '';
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Historia — ${nombre}</title>
+    <style>
+      body{font-family:Arial,sans-serif; padding:32px; color:#1A2332;}
+      h1{font-size:19px; margin-bottom:2px; color:#1A2332;}
+      h2{font-size:14px; margin:24px 0 8px; color:#B8874A; border-bottom:2px solid #B8874A; padding-bottom:4px;}
+      .sub{font-size:12px; color:#8B8E96; margin-bottom:8px;}
+      table{width:100%; border-collapse:collapse; font-size:12.5px;}
+      th,td{text-align:left; padding:7px 9px; border-bottom:1px solid #DDD9D1;}
+      th{background:#F5EAD8; color:#1A2332;}
+      .footer{margin-top:28px; font-size:11px; color:#8B8E96; text-align:center; border-top:1px solid #DDD9D1; padding-top:10px;}
+    </style></head><body>
+    <h1>Zamora Psicología — Historia del paciente</h1>
+    <div class="sub">${nombre} · generado el ${fechaHoy}</div>
+    ${seccion('Sesiones', filasSesiones, ['Fecha','Hora','Duración','Modalidad'])}
+    ${seccion('Pagos', filasPagos, ['Fecha','Tipo','Monto','Estado','Nota'])}
+    ${seccion('Diagnóstico', filasDxBase, ['Código','Sistema','Descripción','Desde','Estado'])}
+    ${seccion('Evolución', filasBitacora, ['Fecha','Nota'])}
+    <div class="footer">Diseñado por: Marto 🧠 · martowave@gmail.com</div>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ alert('Tu navegador bloqueó la ventana emergente. Habilítala para exportar el PDF.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => w.print();
+}
+
 /* ===== THEME ===== */
 const themeToggle = document.getElementById('theme-toggle');
 function applyThemeIcon(){
@@ -328,6 +407,9 @@ let miPacienteId = null;
 let miPaciente = null;
 let modoPreview = false;
 let misSesiones = []; // V1.4: cache de sesiones visibles del propio paciente, para reusar en exportarMiHistoriaPDF()
+let misPagos = []; // V1.6: cache de pagos visibles, para exportarMiHistoriaPDF()
+let miDxBase = []; // V1.6: cache de diagnóstico base visible
+let miBitacora = []; // V1.6: cache de bitácora/evolución visible
 
 /* ===== VISTA PREVIA ADMIN (V1.1) =====
    Si la URL trae ?preview=ID_PACIENTE, en vez del flujo normal de paciente
@@ -524,6 +606,7 @@ async function cargarPagos(){
       return;
     }
     const pagos = snap.docs.map(d => d.data()).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    misPagos = pagos; // V1.6: cache para exportar PDF
 
     const saldo = pagos.filter(p => p.estado !== 'pagado').reduce((s,p) => s + Number(p.saldoPendiente || p.monto || 0), 0);
     bannerWrap.innerHTML = saldo > 0
@@ -576,6 +659,7 @@ async function cargarDiagnostico(){
     const estadoLbl = { activo:'Activo', remision:'En remisión', resuelto:'Resuelto' };
 
     const base = (dx.dxBase || []).filter(d => d.visiblePaciente);
+    miDxBase = base; // V1.6: cache para exportar PDF
     contBase.innerHTML = base.length === 0
       ? '<div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div>'
       : base.map(d => `
@@ -586,6 +670,7 @@ async function cargarDiagnostico(){
         </div>`).join('');
 
     const bitacora = (dx.bitacora || []).filter(b => b.visiblePaciente).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    miBitacora = bitacora; // V1.6: cache para exportar PDF
     contBit.innerHTML = bitacora.length === 0
       ? '<div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div>'
       : bitacora.map(b => `
