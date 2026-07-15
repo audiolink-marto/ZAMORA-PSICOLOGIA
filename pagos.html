@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Pagos</title>
-<!-- V1.1: agregado toggle "visiblePaciente" en el modal de pago, para conexión con portal.html -->
+<!-- V1.1: agregado toggle "visiblePaciente" en el modal de pago, para conexión con portal.html
+     V1.2: fix preventivo — .mas-mobile-panel ahora tiene display:none a nivel raíz
+     (antes solo existía dentro del media query móvil, con riesgo de quedar visible en desktop,
+     igual al bug detectado en index.html V1.9.17). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -280,6 +283,7 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
 /* ===== MOBILE (mismo patrón index.html) ===== */
 .mobile-topbar{display:none;}
 .mobile-bottomnav{display:none;}
+.mas-mobile-panel{display:none;} /* fix preventivo: asegura que quede oculto en desktop */
 @media (max-width: 768px){
   .sb{display:none;}
   .app{flex-direction:column;}

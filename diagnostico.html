@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Diagnóstico</title>
+<!-- V1.1: se agregó botón "···" en la topbar móvil con panel desplegable
+     (Agenda / Pagos / Portal), mismo patrón que index.html y pagos.html.
+     .mas-mobile-panel queda con display:none a nivel raíz para no repetir
+     el bug detectado en index.html V1.9.17. -->
 <!-- V1.0: módulo clínico independiente. Diagnóstico base (CIE-10/DSM-5) + bitácora de
      evolución fechada. Cada entrada con toggle "visiblePaciente" para conexión futura
      con el portal del paciente. Colección Firestore independiente "diagnosticos". -->
@@ -224,6 +228,7 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
 /* ===== MOBILE ===== */
 .mobile-topbar{display:none;}
 .mobile-bottomnav{display:none;}
+.mas-mobile-panel{display:none;} /* raíz: asegura que quede oculto en desktop */
 @media (max-width: 768px){
   .sb{display:none;}
   .app{flex-direction:column;}
@@ -234,6 +239,18 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
   .pf-grid{grid-template-columns:1fr;}
   .mhdr{padding:14px 16px 8px;}
   .mbody, .pf-body{padding:12px 16px;}
+  .mas-mobile-panel{
+    display:none; position:fixed; top:52px; right:16px; z-index:41;
+    background:var(--sb); border-radius:10px; border:0.5px solid rgba(255,255,255,0.1);
+    padding:6px; min-width:200px; box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  }
+  .mas-mobile-panel.show{display:block;}
+  .mas-mobile-item{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:7px;
+    color:var(--sb-txt); font-size:13.5px; cursor:pointer; text-decoration:none;
+  }
+  .mas-mobile-item:hover{background:rgba(255,255,255,0.06);}
+  .mas-mobile-item i{font-size:16px; color:var(--warm); width:18px; text-align:center;}
 }
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
@@ -265,9 +282,15 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
   <div class="mobile-topbar">
     <div class="aname">Diagnóstico</div>
     <div class="mobile-topbar-actions">
+      <button class="theme-toggle" id="btn-mas-mobile" aria-label="Más opciones"><i class="ti ti-dots-vertical"></i></button>
       <button class="theme-toggle" id="theme-toggle-m" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
       <button class="theme-toggle" id="logout-btn-m" aria-label="Cerrar sesión"><i class="ti ti-logout"></i></button>
     </div>
+  </div>
+  <div class="mas-mobile-panel" id="mas-mobile-panel">
+    <a class="mas-mobile-item" href="index.html"><i class="ti ti-calendar-event"></i>Agenda</a>
+    <a class="mas-mobile-item" href="pagos.html"><i class="ti ti-wallet"></i>Pagos</a>
+    <a class="mas-mobile-item" href="portal.html" target="_blank"><i class="ti ti-user-circle"></i>Portal (vista paciente)</a>
   </div>
   <div class="app">
     <aside class="sb">
@@ -472,6 +495,18 @@ document.getElementById('lista-date').textContent =
   new Date().toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
 document.getElementById('volver-agenda').addEventListener('click', () => { window.location.href = 'index.html'; });
+
+/* ===== PANEL "MÁS" MÓVIL ===== */
+const masPanel = document.getElementById('mas-mobile-panel');
+document.getElementById('btn-mas-mobile').addEventListener('click', (e) => {
+  e.stopPropagation();
+  masPanel.classList.toggle('show');
+});
+document.addEventListener('click', (e) => {
+  if(masPanel.classList.contains('show') && !masPanel.contains(e.target) && e.target.id !== 'btn-mas-mobile'){
+    masPanel.classList.remove('show');
+  }
+});
 
 /* ===== LOGIN ===== */
 const loginScreen = document.getElementById('login-screen');

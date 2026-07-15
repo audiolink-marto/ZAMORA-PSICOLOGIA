@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zamora Psicología — Portal del paciente</title>
-<!-- V1.0: portal de solo lectura para pacientes. Login propio (Firebase Auth, mismo
+<!-- V1.1: modo vista previa admin (?preview=ID_PACIENTE, valida contra equipoInterno,
+     sin login, banner fijo de aviso) y bloqueo de acceso si portalRevocado=true en
+     el login normal del paciente.
+     V1.0: portal de solo lectura para pacientes. Login propio (Firebase Auth, mismo
      proyecto). Solo lee documentos donde request.auth.uid == pacientes/{id}.authUid
      (reglas de Firestore). Muestra pagos/sesiones/diagnóstico marcados visiblePaciente=true.
      Este archivo NUNCA escribe en Firestore, solo lee. -->
@@ -143,6 +146,9 @@ button, input{font-family:'Inter',sans-serif;}
 
 <!-- ===== APP ===== -->
 <div id="app-screen">
+  <div id="preview-banner" style="display:none; background:var(--warm, #e08a2e); color:#fff; text-align:center; font-size:13px; font-weight:600; padding:8px 12px;">
+    Vista previa — modo administrador · <span id="preview-banner-nombre"></span>
+  </div>
   <div class="topbar">
     <div>
       <div class="aname">Zamora Psicología</div>
@@ -249,7 +255,6 @@ document.getElementById('olvide-pass').addEventListener('click', () => {
     .then(() => { okEl.textContent = 'Te enviamos un correo para crear una nueva contraseña.'; })
     .catch(err => { console.error(err); errEl.textContent = 'No pudimos enviar el correo. Verifica que esté bien escrito.'; });
 });
-document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
 /* ============================================
    AUTENTICACIÓN → IDENTIFICAR AL PACIENTE
@@ -262,8 +267,72 @@ document.getElementById('logout-btn').addEventListener('click', () => signOut(au
    ============================================ */
 let miPacienteId = null;
 let miPaciente = null;
+let modoPreview = false;
+
+/* ===== VISTA PREVIA ADMIN (V1.1) =====
+   Si la URL trae ?preview=ID_PACIENTE, en vez del flujo normal de paciente
+   verificamos que quien tiene sesión iniciada en este navegador (el mismo Auth
+   del proyecto, ya logueado desde index.html) sea una cuenta de equipoInterno.
+   Si lo es, cargamos ese paciente directo, sin pedir login. Es solo lectura:
+   portal.html no tiene campos editables del lado paciente, así que no hace
+   falta bloquear nada adicional. */
+const previewId = new URLSearchParams(window.location.search).get('preview');
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  if(modoPreview){
+    // No usamos signOut aquí: es la misma sesión de Auth que index.html en otra
+    // pestaña, y cerrar sesión aquí cerraría también la del admin. Solo cerramos esta vista.
+    window.close();
+    // Si el navegador no permite cerrar la pestaña (no fue abierta por script en algunos casos), volvemos atrás.
+    setTimeout(() => { if(!window.closed) history.back(); }, 150);
+    return;
+  }
+  signOut(auth);
+});
 
 onAuthStateChanged(auth, async (user) => {
+  if(previewId){
+    if(!user){
+      document.getElementById('login-err').textContent = 'Debes tener una sesión de administrador iniciada (en index.html) para ver la vista previa.';
+      loginScreen.style.display = 'flex';
+      appScreen.style.display = 'none';
+      return;
+    }
+    try{
+      const equipoDoc = await getDoc(doc(db, 'equipoInterno', (user.email || '').toLowerCase()));
+      if(!equipoDoc.exists()){
+        document.getElementById('login-err').textContent = 'Tu cuenta no tiene permisos de administrador para ver esta vista previa.';
+        loginScreen.style.display = 'flex';
+        appScreen.style.display = 'none';
+        return;
+      }
+      const pDoc = await getDoc(doc(db, 'pacientes', previewId));
+      if(!pDoc.exists()){
+        document.getElementById('login-err').textContent = 'No encontramos ese paciente.';
+        loginScreen.style.display = 'flex';
+        appScreen.style.display = 'none';
+        return;
+      }
+      miPacienteId = pDoc.id;
+      miPaciente = pDoc.data();
+      modoPreview = true;
+
+      loginScreen.style.display = 'none';
+      appScreen.style.display = 'block';
+      document.getElementById('preview-banner').style.display = 'block';
+      document.getElementById('preview-banner-nombre').textContent = miPaciente.nombre || previewId;
+      document.getElementById('bienvenida').textContent = `Hola, ${(miPaciente.nombre||'').split(' ')[0] || ''} —`;
+
+      cargarSesiones();
+      cargarPagos();
+      cargarDiagnostico();
+    } catch(err){
+      console.error(err);
+      document.getElementById('login-err').textContent = 'No pudimos cargar la vista previa. Intenta de nuevo.';
+    }
+    return;
+  }
+
   if(user){
     try{
       const q = query(collection(db, 'pacientes'), where('authUid', '==', user.uid));
@@ -274,8 +343,16 @@ onAuthStateChanged(auth, async (user) => {
         return;
       }
       const d = snap.docs[0];
+      const data = d.data();
+
+      if(data.portalRevocado){
+        document.getElementById('login-err').textContent = 'Tu acceso fue desactivado. Contacta al consultorio.';
+        await signOut(auth);
+        return;
+      }
+
       miPacienteId = d.id;
-      miPaciente = d.data();
+      miPaciente = data;
 
       loginScreen.style.display = 'none';
       appScreen.style.display = 'block';

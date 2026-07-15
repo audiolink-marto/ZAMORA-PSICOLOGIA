@@ -6,7 +6,15 @@
 <title>PsicoGestión — Consultorio</title>
 <!-- V1.9.16: en móvil, el sidebar completo se oculta (por diseño), lo que hacía
      desaparecer "Módulos" (Pagos/Diagnóstico/Portal) y "Equipo interno". Se agregó un
-     botón "···" en la topbar móvil que despliega un panel con esos mismos accesos. -->
+     botón "···" en la topbar móvil que despliega un panel con esos mismos accesos.
+     V1.9.18: modal centralizado "Portal de pacientes" (activar/reenviar/revocar/vista previa),
+     campo portalRevocado (bandera reversible, no borra la cuenta de Firebase Auth) y botón
+     de revocar/reactivar en la ficha del paciente. Vista previa abre portal.html?preview=ID
+     en pestaña nueva, validado en portal.html contra la colección equipoInterno.
+     V1.9.17: fix — el panel "···" (.mas-mobile-panel) quedó con su display:none
+     anidado dentro del media query de móvil, así que en escritorio no tenía ninguna
+     regla de display y se mostraba como bloque fijo arriba de la app. Se movió la
+     regla a nivel raíz junto a .mobile-topbar/.mobile-bottomnav. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -313,6 +321,14 @@ button, input{font-family:'Inter',sans-serif;}
 .equipo-item{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:0.5px solid var(--brd); border-radius:8px; margin-bottom:6px; font-size:13.5px;}
 .equipo-item .del{cursor:pointer; color:var(--muted); font-size:15px;}
 .equipo-item .del:hover{color:var(--danger);}
+/* ===== FILAS DEL MODAL PORTAL DE PACIENTES (V1.9.18) ===== */
+.pp-item{padding:10px; border:0.5px solid var(--brd); border-radius:8px; margin-bottom:8px; font-size:13.5px;}
+.pp-item-top{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;}
+.pp-item-nm{font-weight:600;}
+.pp-item-actions{display:flex; flex-wrap:wrap; gap:6px;}
+.pp-act{cursor:pointer; font-size:12px; padding:4px 9px; border-radius:6px; border:0.5px solid var(--brd); color:var(--txt); background:var(--pg);}
+.pp-act:hover{border-color:var(--pri); color:var(--pri);}
+.pp-act.danger:hover{border-color:var(--danger); color:var(--danger);}
 .field:last-child{margin-bottom:0;}
 .flbl{font-size:11.5px; color:var(--muted);}
 .fval{font-size:14px; color:var(--txt); margin-top:2px; line-height:1.5;}
@@ -431,6 +447,7 @@ button, input{font-family:'Inter',sans-serif;}
 /* ===== MOBILE TOPBAR & BOTTOM NAV (V1.2) ===== */
 .mobile-topbar{display:none;}
 .mobile-bottomnav{display:none;}
+.mas-mobile-panel{display:none;} /* V1.9.17: fix — estaba dentro del media query y quedaba visible en desktop */
 
 @media (max-width: 768px){
   .sb{display:none;}
@@ -441,7 +458,6 @@ button, input{font-family:'Inter',sans-serif;}
   }
   .mobile-topbar .aname{font-size:15px; font-weight:600; color:#fff;}
   .mobile-topbar-actions{display:flex; gap:8px;}
-.mas-mobile-panel{display:none;}
   .main{padding-bottom:58px;}
   .mobile-bottomnav{
     display:flex; position:fixed; bottom:0; left:0; right:0; height:58px;
@@ -549,6 +565,7 @@ button, input{font-family:'Inter',sans-serif;}
     <a class="mas-mobile-item" href="diagnostico.html"><i class="ti ti-stethoscope"></i>Diagnóstico</a>
     <a class="mas-mobile-item" href="portal.html" target="_blank"><i class="ti ti-user-circle"></i>Portal (vista paciente)</a>
     <div class="mas-mobile-item" id="btn-equipo-interno-mobile"><i class="ti ti-users-group"></i>Equipo interno</div>
+    <div class="mas-mobile-item" id="btn-portal-pacientes-mobile"><i class="ti ti-shield-lock"></i>Portal de pacientes</div>
   </div>
   <div class="app">
     <aside class="sb">
@@ -593,6 +610,7 @@ button, input{font-family:'Inter',sans-serif;}
         <div>
           <div class="prof-nm" id="prof-nm">Psicólogo/a</div>
           <div class="prof-rl" id="btn-equipo-interno" style="margin-bottom:2px;">Equipo interno</div>
+          <div class="prof-rl" id="btn-portal-pacientes" style="margin-bottom:2px;">Portal de pacientes</div>
           <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
         </div>
       </div>
@@ -669,6 +687,9 @@ button, input{font-family:'Inter',sans-serif;}
               <div class="card" id="pf-portal-card">
                 <div class="ctit">Portal del paciente</div>
                 <div class="fval" id="pf-portal-estado" style="font-size:13.5px;">Aún no activado.</div>
+                <div id="pf-portal-revocar-wrap" style="display:none; margin-top:8px;">
+                  <span class="pp-act danger" id="pf-portal-revocar-btn">Revocar acceso</span>
+                </div>
               </div>
               <div class="card">
                 <div class="ctit">Motivo de consulta</div>
@@ -867,6 +888,24 @@ button, input{font-family:'Inter',sans-serif;}
         </div>
         <div id="equipo-lista"><div class="empty-state">Cargando...</div></div>
         <div class="login-err" id="equipo-modal-err"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PORTAL DE PACIENTES (V1.9.18) -->
+  <div id="portal-pac-modal-overlay" style="display:none; position:relative; z-index:50;">
+    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
+      <div style="width:100%; max-width:480px; max-height:82vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <div style="font-size:16px; font-weight:600;">Portal de pacientes</div>
+          <span style="cursor:pointer; color:var(--muted); font-size:17px;" id="portal-pac-modal-close"><i class="ti ti-x"></i></span>
+        </div>
+        <div style="font-size:12.5px; color:var(--muted); margin-bottom:14px;">
+          Pacientes con correo registrado. Activa su acceso, reenvía el correo de contraseña, revoca el acceso o mira una vista previa de lo que ellos ven.
+        </div>
+        <div class="sb-search" style="padding:0 0 12px;"><input type="text" id="portal-pac-buscador" placeholder="Buscar paciente..."></div>
+        <div id="portal-pac-lista"><div class="empty-state">Cargando...</div></div>
+        <div class="login-err" id="portal-pac-modal-err"></div>
       </div>
     </div>
   </div>
@@ -1976,14 +2015,44 @@ async function eliminarSesionDefinitivo(sid){
 function renderEstadoPortal(p){
   const estadoEl = document.getElementById('pf-portal-estado');
   const btnLbl = document.getElementById('pf-portal-btn-lbl');
+  const revocarWrap = document.getElementById('pf-portal-revocar-wrap');
+  const revocarBtn = document.getElementById('pf-portal-revocar-btn');
   if(p.authUid){
-    estadoEl.innerHTML = `<span style="color:var(--pri); font-weight:600;">Activo</span> — el paciente puede iniciar sesión con ${p.email || 'su correo'}.`;
+    revocarWrap.style.display = 'block';
+    if(p.portalRevocado){
+      estadoEl.innerHTML = `<span style="color:var(--danger); font-weight:600;">Acceso revocado</span> — ${p.email || 'el paciente'} no puede iniciar sesión aunque tenga contraseña.`;
+      revocarBtn.textContent = 'Reactivar acceso';
+      revocarBtn.classList.remove('danger');
+    } else {
+      estadoEl.innerHTML = `<span style="color:var(--pri); font-weight:600;">Activo</span> — el paciente puede iniciar sesión con ${p.email || 'su correo'}.`;
+      revocarBtn.textContent = 'Revocar acceso';
+      revocarBtn.classList.add('danger');
+    }
     btnLbl.textContent = 'Reenviar acceso';
   } else {
+    revocarWrap.style.display = 'none';
     estadoEl.textContent = 'Aún no activado.';
     btnLbl.textContent = 'Activar portal';
   }
 }
+
+document.getElementById('pf-portal-revocar-btn').addEventListener('click', async () => {
+  const p = pacientesCache[fichaActualId];
+  if(!p || !p.authUid) return;
+  const nuevoEstado = !p.portalRevocado;
+  const accion = nuevoEstado ? 'revocar el acceso al portal de' : 'reactivar el acceso al portal de';
+  if(!confirm(`¿Seguro que quieres ${accion} ${p.nombre}?`)) return;
+  try{
+    await updateDoc(doc(db, 'pacientes', fichaActualId), { portalRevocado: nuevoEstado });
+    p.portalRevocado = nuevoEstado;
+    pacientesCache[fichaActualId] = p;
+    renderEstadoPortal(p);
+    showToast(nuevoEstado ? 'Acceso al portal revocado.' : 'Acceso al portal reactivado.', 'ok');
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos actualizar el acceso. Intenta de nuevo.', 'err');
+  }
+});
 
 document.getElementById('pf-portal-btn').addEventListener('click', async () => {
   const p = pacientesCache[fichaActualId];
@@ -2102,6 +2171,126 @@ window._quitarEquipo = async function(correo){
     console.error(err);
     showToast('No pudimos eliminar el correo.', 'err');
   }
+};
+
+/* ===== MODAL: PORTAL DE PACIENTES (V1.9.18) =====
+   Lista centralizada de pacientes con correo. Usa pacientesCache (ya cargado) y
+   p.authUid / p.portalRevocado como fuente de verdad. No requiere Admin SDK. */
+const portalPacOverlay = document.getElementById('portal-pac-modal-overlay');
+
+document.getElementById('btn-portal-pacientes').addEventListener('click', () => {
+  document.getElementById('portal-pac-modal-err').textContent = '';
+  document.getElementById('portal-pac-buscador').value = '';
+  renderListaPortalPacientes();
+  portalPacOverlay.style.display = 'block';
+});
+document.getElementById('btn-portal-pacientes-mobile').addEventListener('click', () => {
+  masPanel.classList.remove('show');
+  document.getElementById('btn-portal-pacientes').click();
+});
+document.getElementById('portal-pac-modal-close').addEventListener('click', () => portalPacOverlay.style.display = 'none');
+document.getElementById('portal-pac-buscador').addEventListener('input', () => renderListaPortalPacientes());
+
+function renderListaPortalPacientes(){
+  const cont = document.getElementById('portal-pac-lista');
+  const term = document.getElementById('portal-pac-buscador').value.trim().toLowerCase();
+  const ids = Object.keys(pacientesCache)
+    .filter(id => pacientesCache[id].email)
+    .filter(id => !term || (pacientesCache[id].nombre || '').toLowerCase().includes(term) || (pacientesCache[id].email || '').toLowerCase().includes(term))
+    .sort((a, b) => (pacientesCache[a].nombre || '').localeCompare(pacientesCache[b].nombre || ''));
+
+  if(ids.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay pacientes con correo registrado.</div>';
+    return;
+  }
+
+  cont.innerHTML = ids.map(id => {
+    const p = pacientesCache[id];
+    let badge, accionesExtra;
+    if(!p.authUid){
+      badge = '<span class="badge b-ses">Sin activar</span>';
+      accionesExtra = `<span class="pp-act" onclick="window._ppActivar('${id}')">Activar</span>`;
+    } else if(p.portalRevocado){
+      badge = '<span class="badge b-conflict">Revocado</span>';
+      accionesExtra = `
+        <span class="pp-act" onclick="window._ppReenviar('${id}')">Reenviar correo</span>
+        <span class="pp-act" onclick="window._ppRevocar('${id}', false)">Reactivar</span>`;
+    } else {
+      badge = '<span class="badge b-act">Activado</span>';
+      accionesExtra = `
+        <span class="pp-act" onclick="window._ppReenviar('${id}')">Reenviar correo</span>
+        <span class="pp-act danger" onclick="window._ppRevocar('${id}', true)">Revocar</span>`;
+    }
+    return `
+      <div class="pp-item">
+        <div class="pp-item-top">
+          <span class="pp-item-nm">${p.nombre || 'Sin nombre'}</span>
+          ${badge}
+        </div>
+        <div style="color:var(--muted); font-size:12.5px; margin-bottom:8px;">${p.email}</div>
+        <div class="pp-item-actions">
+          ${accionesExtra}
+          <span class="pp-act" onclick="window._ppPreview('${id}')"><i class="ti ti-eye" style="font-size:11px; margin-right:3px;"></i>Vista previa</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window._ppActivar = async function(pid){
+  const p = pacientesCache[pid];
+  if(!p || !p.email) return;
+  if(!confirm(`¿Activar el portal para ${p.nombre}? Se creará una cuenta con ${p.email} y se le enviará un correo para crear su contraseña.`)) return;
+  try{
+    const passTemp = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const cred = await createUserWithEmailAndPassword(authPortal, p.email, passTemp);
+    await updateDoc(doc(db, 'pacientes', pid), { authUid: cred.user.uid });
+    await sendPasswordResetEmail(authPortal, p.email);
+    await signOut(authPortal);
+    p.authUid = cred.user.uid;
+    showToast(`Portal activado. Se envió un correo a ${p.email}.`, 'ok');
+    renderListaPortalPacientes();
+    if(fichaActualId === pid) renderEstadoPortal(p);
+  } catch(err){
+    console.error(err);
+    if(err.code === 'auth/email-already-in-use'){
+      showToast('Ese correo ya tiene una cuenta de portal creada. Verifica el correo.', 'err');
+    } else {
+      showToast('No pudimos activar el portal. Intenta de nuevo.', 'err');
+    }
+  }
+};
+
+window._ppReenviar = async function(pid){
+  const p = pacientesCache[pid];
+  if(!p || !p.email) return;
+  try{
+    await sendPasswordResetEmail(authPortal, p.email);
+    showToast(`Correo de acceso reenviado a ${p.email}.`, 'ok');
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos reenviar el correo.', 'err');
+  }
+};
+
+window._ppRevocar = async function(pid, nuevoEstado){
+  const p = pacientesCache[pid];
+  if(!p) return;
+  const accion = nuevoEstado ? 'revocar el acceso al portal de' : 'reactivar el acceso al portal de';
+  if(!confirm(`¿Seguro que quieres ${accion} ${p.nombre}?`)) return;
+  try{
+    await updateDoc(doc(db, 'pacientes', pid), { portalRevocado: nuevoEstado });
+    p.portalRevocado = nuevoEstado;
+    showToast(nuevoEstado ? 'Acceso al portal revocado.' : 'Acceso al portal reactivado.', 'ok');
+    renderListaPortalPacientes();
+    if(fichaActualId === pid) renderEstadoPortal(p);
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos actualizar el acceso.', 'err');
+  }
+};
+
+window._ppPreview = function(pid){
+  window.open(`portal.html?preview=${pid}`, '_blank');
 };
 
 function openFicha(pid){
