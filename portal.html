@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zamora Psicología — Portal del paciente</title>
+<!-- V1.0: portal de solo lectura para pacientes. Login propio (Firebase Auth, mismo
+     proyecto). Solo lee documentos donde request.auth.uid == pacientes/{id}.authUid
+     (reglas de Firestore). Muestra pagos/sesiones/diagnóstico marcados visiblePaciente=true.
+     Este archivo NUNCA escribe en Firestore, solo lee. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+
+<script>
+(function(){
+  var t = localStorage.getItem('psicogestion_theme_v1') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+
+<style>
+:root, [data-theme="light"]{
+  --sb:#1A2332; --sb-txt:#A8B8C8; --sb-txt-dim:rgba(255,255,255,0.32);
+  --pri:#4A7B6F; --pri-lt:#E3EDE9; --pri-on-sb:#7EC8B0;
+  --warm:#B8874A; --warm-lt:#F5EAD8;
+  --pg:#EEE9E1; --crd:#FFFFFF;
+  --txt:#1A2332; --muted:#8B8E96;
+  --brd:#DDD9D1;
+  --virt-bg:#EEF2FB; --virt-txt:#5068B0;
+  --pres-bg:#FFF4E6; --pres-txt:#9A6830;
+  --danger:#B0503E; --danger-lt:#F5DED9;
+  --activo:#4A7B6F; --activo-lt:#E3EDE9;
+  --remision:#B8874A; --remision-lt:#F5EAD8;
+  --resuelto:#8B8E96; --resuelto-lt:#F1F0EE;
+}
+[data-theme="dark"]{
+  --sb:#0F1512; --sb-txt:#8A9A93; --sb-txt-dim:rgba(255,255,255,0.26);
+  --pri:#5A9885; --pri-lt:#16221D; --pri-on-sb:#5A9885;
+  --warm:#C99A5B; --warm-lt:#241E13;
+  --pg:#161B19; --crd:#1D2320;
+  --txt:#EDEDE9; --muted:#8A9089;
+  --brd:#2C332F;
+  --virt-bg:#1B1F2C; --virt-txt:#8B9DE0;
+  --pres-bg:#241E13; --pres-txt:#C99A5B;
+  --danger:#D97B65; --danger-lt:#2A1B17;
+  --activo:#5A9885; --activo-lt:#16221D;
+  --remision:#C99A5B; --remision-lt:#241E13;
+  --resuelto:#8A9089; --resuelto-lt:#232723;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{font-family:'Inter',sans-serif; background:var(--pg); color:var(--txt); -webkit-font-smoothing:antialiased;}
+button, input{font-family:'Inter',sans-serif;}
+
+#login-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--pg); padding:20px;}
+.login-card{width:100%; max-width:360px; background:var(--crd); border:0.5px solid var(--brd); border-radius:14px; padding:32px 28px;}
+.login-logo{font-size:19px; font-weight:700; text-align:center;}
+.login-sub{font-size:13px; color:var(--muted); text-align:center; margin-top:4px; margin-bottom:26px;}
+.login-field{margin-bottom:14px;}
+.login-field label{font-size:12.5px; color:var(--muted); display:block; margin-bottom:5px;}
+.login-field input{width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd); background:var(--pg); color:var(--txt); padding:0 12px; font-size:14.5px; outline:none;}
+.login-field input:focus{border-color:var(--pri);}
+.login-btn{width:100%; height:42px; border-radius:8px; border:none; background:var(--pri); color:#fff; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:6px;}
+.login-btn:hover{opacity:.9;}
+.login-link{font-size:12.5px; color:var(--pri); text-align:center; margin-top:14px; cursor:pointer;}
+.login-link:hover{text-decoration:underline;}
+.login-err{font-size:13px; color:var(--danger); margin-top:10px; text-align:center; min-height:16px;}
+.login-ok{font-size:13px; color:var(--pri); margin-top:10px; text-align:center; min-height:16px;}
+
+#app-screen{display:none; min-height:100vh;}
+.topbar{display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:var(--sb); flex-shrink:0;}
+.topbar .aname{font-size:15px; font-weight:600; color:#fff;}
+.topbar .asub{font-size:11px; color:var(--sb-txt-dim);}
+.topbar-actions{display:flex; gap:8px;}
+.icon-btn-top{width:32px; height:32px; border-radius:8px; border:0.5px solid rgba(255,255,255,0.12); background:transparent; color:var(--sb-txt); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px;}
+.icon-btn-top:hover{background:rgba(255,255,255,0.06);}
+
+.container{max-width:680px; margin:0 auto; padding:20px;}
+.welcome{font-size:20px; font-weight:600; margin-bottom:2px;}
+.welcome-sub{font-size:13px; color:var(--muted); margin-bottom:18px;}
+
+.tabs{display:flex; gap:4px; background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:4px; margin-bottom:18px;}
+.tab{flex:1; text-align:center; font-size:13px; font-weight:500; color:var(--muted); padding:9px 6px; border-radius:7px; cursor:pointer; transition:all .15s;}
+.tab.active{background:var(--pri); color:#fff;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+.card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; margin-bottom:10px;}
+.crow{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+.c-title{font-size:14px; font-weight:600; color:var(--txt);}
+.c-sub{font-size:12px; color:var(--muted); margin-top:3px;}
+.c-monto{font-size:16px; font-weight:700; color:var(--txt);}
+.badge{font-size:11px; padding:3px 9px; border-radius:20px; font-weight:600; flex-shrink:0;}
+.b-pagado{background:var(--activo-lt); color:var(--activo);}
+.b-pendiente{background:var(--danger-lt); color:var(--danger);}
+.b-parcial{background:var(--remision-lt); color:var(--remision);}
+.b-activo{background:var(--activo-lt); color:var(--activo);}
+.b-remision{background:var(--remision-lt); color:var(--remision);}
+.b-resuelto{background:var(--resuelto-lt); color:var(--resuelto);}
+.b-virtual{background:var(--virt-bg); color:var(--virt-txt);}
+.b-presencial{background:var(--pres-bg); color:var(--pres-txt);}
+
+.dxb-item{border:0.5px solid var(--brd); border-radius:8px; padding:12px 14px; margin-bottom:8px;}
+.dxb-codigo{font-family:monospace; font-weight:700; font-size:13.5px;}
+.dxb-desc{font-size:13.5px; margin-top:6px; line-height:1.5;}
+.dxb-fecha{font-size:11.5px; color:var(--muted); margin-top:6px;}
+
+.timeline{position:relative;}
+.tl-item{position:relative; padding-bottom:14px; border-left:1.5px solid var(--brd); padding-left:16px; margin-left:4px;}
+.tl-item:last-child{border-left:1.5px solid transparent; padding-bottom:0;}
+.tl-dot{position:absolute; left:-5.5px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--pri);}
+.tl-dt{font-size:12px; color:var(--muted); font-weight:500;}
+.tl-nt{font-size:13.5px; margin-top:4px; line-height:1.55; white-space:pre-wrap;}
+
+.empty-state{padding:32px 20px; text-align:center; color:var(--muted); font-size:13.5px;}
+.saldo-banner{background:var(--warm-lt); border:0.5px solid var(--warm); border-radius:10px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;}
+.saldo-banner .lbl{font-size:12.5px; color:var(--txt);}
+.saldo-banner .num{font-size:18px; font-weight:700; color:var(--warm);}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Zamora Psicología</div>
+    <div class="login-sub">Portal del paciente</div>
+    <div class="login-field">
+      <label>Correo</label>
+      <input type="email" id="login-email" placeholder="tucorreo@ejemplo.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="login-btn">Iniciar sesión</button>
+    <div class="login-link" id="olvide-pass">¿Olvidaste tu contraseña?</div>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-ok" id="login-ok"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-screen">
+  <div class="topbar">
+    <div>
+      <div class="aname">Zamora Psicología</div>
+      <div class="asub">Portal del paciente</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn-top" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+      <button class="icon-btn-top" id="logout-btn" aria-label="Cerrar sesión"><i class="ti ti-logout"></i></button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="welcome" id="bienvenida">Hola —</div>
+    <div class="welcome-sub">Este es tu espacio personal. Aquí puedes ver la información que tu psicólogo/a ha compartido contigo.</div>
+
+    <div id="saldo-banner-wrap"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-panel="sesiones">Sesiones</div>
+      <div class="tab" data-panel="pagos">Pagos</div>
+      <div class="tab" data-panel="diagnostico">Mi proceso</div>
+    </div>
+
+    <div class="panel active" id="panel-sesiones">
+      <div id="lista-sesiones"><div class="empty-state">Cargando...</div></div>
+    </div>
+
+    <div class="panel" id="panel-pagos">
+      <div id="lista-pagos-portal"><div class="empty-state">Cargando...</div></div>
+    </div>
+
+    <div class="panel" id="panel-diagnostico">
+      <div class="card">
+        <div class="c-title" style="margin-bottom:10px;">Diagnóstico</div>
+        <div id="dxb-portal"><div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div></div>
+      </div>
+      <div class="card">
+        <div class="c-title" style="margin-bottom:10px;">Evolución</div>
+        <div class="timeline" id="bitacora-portal"><div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, collection, query, where, getDocs, doc, getDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* ============================================
+   FIREBASE CONFIG — mismo proyecto zamora-psicologia
+   ============================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyA3BpiEbWY7XUZskliM56ZGkpioSmjJbwA",
+  authDomain: "zamora-psicologia.firebaseapp.com",
+  projectId: "zamora-psicologia",
+  storageBucket: "zamora-psicologia.firebasestorage.app",
+  messagingSenderId: "1018710047961",
+  appId: "1:1018710047961:web:bc619e40b828d35347d2c8"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ===== THEME ===== */
+const themeToggle = document.getElementById('theme-toggle');
+function applyThemeIcon(){
+  const t = document.documentElement.getAttribute('data-theme');
+  themeToggle.innerHTML = t === 'dark' ? '<i class="ti ti-sun"></i>' : '<i class="ti ti-moon"></i>';
+}
+applyThemeIcon();
+themeToggle.addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('psicogestion_theme_v1', next);
+  applyThemeIcon();
+});
+
+/* ===== LOGIN ===== */
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app-screen');
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Completa correo y contraseña.'; return; }
+  signInWithEmailAndPassword(auth, email, pass)
+    .catch(err => { errEl.textContent = 'Correo o contraseña incorrectos.'; console.error(err); });
+}
+document.getElementById('olvide-pass').addEventListener('click', () => {
+  const email = document.getElementById('login-email').value.trim();
+  const errEl = document.getElementById('login-err');
+  const okEl = document.getElementById('login-ok');
+  errEl.textContent = ''; okEl.textContent = '';
+  if(!email){ errEl.textContent = 'Escribe tu correo arriba primero.'; return; }
+  sendPasswordResetEmail(auth, email)
+    .then(() => { okEl.textContent = 'Te enviamos un correo para crear una nueva contraseña.'; })
+    .catch(err => { console.error(err); errEl.textContent = 'No pudimos enviar el correo. Verifica que esté bien escrito.'; });
+});
+document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+/* ============================================
+   AUTENTICACIÓN → IDENTIFICAR AL PACIENTE
+   Buscamos en "pacientes" el documento cuyo authUid == uid del usuario logueado.
+   Las reglas de Firestore garantizan que un paciente SOLO puede leer:
+   - su propio documento en "pacientes" (por authUid)
+   - documentos en "sesiones"/"pagos" donde pacienteId sea el suyo
+   - su propio documento en "diagnosticos" (id == pacienteId)
+   Nunca puede leer datos de otro paciente, aunque lo intente por consola.
+   ============================================ */
+let miPacienteId = null;
+let miPaciente = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if(user){
+    try{
+      const q = query(collection(db, 'pacientes'), where('authUid', '==', user.uid));
+      const snap = await getDocs(q);
+      if(snap.empty){
+        document.getElementById('login-err').textContent = 'Tu cuenta no está vinculada a ningún paciente. Contacta a tu psicólogo/a.';
+        await signOut(auth);
+        return;
+      }
+      const d = snap.docs[0];
+      miPacienteId = d.id;
+      miPaciente = d.data();
+
+      loginScreen.style.display = 'none';
+      appScreen.style.display = 'block';
+      document.getElementById('bienvenida').textContent = `Hola, ${(miPaciente.nombre||'').split(' ')[0] || ''} —`;
+
+      cargarSesiones();
+      cargarPagos();
+      cargarDiagnostico();
+    } catch(err){
+      console.error(err);
+      document.getElementById('login-err').textContent = 'No pudimos cargar tu información. Intenta de nuevo.';
+    }
+  } else {
+    loginScreen.style.display = 'flex';
+    appScreen.style.display = 'none';
+    miPacienteId = null; miPaciente = null;
+  }
+});
+
+/* ===== TABS ===== */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.panel).classList.add('active');
+  });
+});
+
+function money(n){ n = Number(n) || 0; return '$' + n.toLocaleString('es-CO'); }
+
+/* ===== SESIONES VISIBLES ===== */
+async function cargarSesiones(){
+  const cont = document.getElementById('lista-sesiones');
+  try{
+    const q = query(collection(db, 'sesiones'),
+      where('pacienteId', '==', miPacienteId),
+      where('visiblePaciente', '==', true));
+    const snap = await getDocs(q);
+    if(snap.empty){ cont.innerHTML = '<div class="empty-state">Aún no hay sesiones compartidas contigo.</div>'; return; }
+    const sesiones = snap.docs.map(d => d.data()).sort((a,b) => (b.fechaStr||'').localeCompare(a.fechaStr||''));
+    cont.innerHTML = sesiones.map(s => `
+      <div class="card">
+        <div class="crow">
+          <div>
+            <div class="c-title">${s.fechaStr || '—'} · ${s.hora || '—'}</div>
+            <div class="c-sub">Duración: ${s.duracion || '—'}</div>
+          </div>
+          <span class="badge b-${s.modalidad}">${s.modalidad === 'virtual' ? 'Virtual' : 'Presencial'}</span>
+        </div>
+      </div>`).join('');
+  } catch(err){
+    console.error(err);
+    cont.innerHTML = '<div class="empty-state">No pudimos cargar tus sesiones.</div>';
+  }
+}
+
+/* ===== PAGOS VISIBLES ===== */
+async function cargarPagos(){
+  const cont = document.getElementById('lista-pagos-portal');
+  const bannerWrap = document.getElementById('saldo-banner-wrap');
+  try{
+    const q = query(collection(db, 'pagos'),
+      where('pacienteId', '==', miPacienteId),
+      where('visiblePaciente', '==', true));
+    const snap = await getDocs(q);
+    if(snap.empty){
+      cont.innerHTML = '<div class="empty-state">Aún no hay pagos compartidos contigo.</div>';
+      bannerWrap.innerHTML = '';
+      return;
+    }
+    const pagos = snap.docs.map(d => d.data()).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+    const saldo = pagos.filter(p => p.estado !== 'pagado').reduce((s,p) => s + Number(p.saldoPendiente || p.monto || 0), 0);
+    bannerWrap.innerHTML = saldo > 0
+      ? `<div class="saldo-banner"><div class="lbl">Saldo pendiente</div><div class="num">${money(saldo)}</div></div>`
+      : '';
+
+    const estLbl = { pagado:'Pagado', parcial:'Parcial', pendiente:'Pendiente' };
+    const tipoLbl = { sesion:'Pago por sesión', periodo:'Pago por período', abono:'Abono' };
+    cont.innerHTML = pagos.map(p => `
+      <div class="card">
+        <div class="crow">
+          <div>
+            <div class="c-title">${tipoLbl[p.tipo] || p.tipo}</div>
+            <div class="c-sub">${p.fecha}${p.nota ? ' · ' + p.nota : ''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="c-monto">${money(p.monto)}</div>
+            <span class="badge b-${p.estado}">${estLbl[p.estado] || p.estado}</span>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(err){
+    console.error(err);
+    cont.innerHTML = '<div class="empty-state">No pudimos cargar tus pagos.</div>';
+  }
+}
+
+/* ===== DIAGNÓSTICO / BITÁCORA VISIBLES =====
+   El documento en "diagnosticos" tiene id == pacienteId. Filtramos client-side
+   solo las entradas con visiblePaciente=true (las reglas ya limitan a que solo
+   pueda leer SU documento, así que no hay riesgo de ver el de otro paciente). */
+async function cargarDiagnostico(){
+  const contBase = document.getElementById('dxb-portal');
+  const contBit = document.getElementById('bitacora-portal');
+  try{
+    const snap = await getDoc(doc(db, 'diagnosticos', miPacienteId));
+    if(!snap.exists()){
+      contBase.innerHTML = '<div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div>';
+      contBit.innerHTML = '<div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div>';
+      return;
+    }
+    const dx = snap.data();
+    const estadoLbl = { activo:'Activo', remision:'En remisión', resuelto:'Resuelto' };
+
+    const base = (dx.dxBase || []).filter(d => d.visiblePaciente);
+    contBase.innerHTML = base.length === 0
+      ? '<div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div>'
+      : base.map(d => `
+        <div class="dxb-item">
+          <span class="dxb-codigo">${d.codigo}</span> <span style="font-size:11px; color:var(--muted);">${d.sistema}</span>
+          <div class="dxb-desc">${d.descripcion}</div>
+          <div class="dxb-fecha">Desde ${d.fecha} <span class="badge b-${d.estado}" style="margin-left:4px;">${estadoLbl[d.estado]}</span></div>
+        </div>`).join('');
+
+    const bitacora = (dx.bitacora || []).filter(b => b.visiblePaciente).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    contBit.innerHTML = bitacora.length === 0
+      ? '<div class="empty-state" style="padding:12px 0;">Sin información compartida aún.</div>'
+      : bitacora.map(b => `
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-dt">${b.fecha}</div>
+          <div class="tl-nt">${b.nota}</div>
+        </div>`).join('');
+  } catch(err){
+    console.error(err);
+    contBase.innerHTML = '<div class="empty-state">No pudimos cargar esta información.</div>';
+    contBit.innerHTML = '';
+  }
+}
+
+</script>
+</body>
+</html>

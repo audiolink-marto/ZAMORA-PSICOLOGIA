@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Pagos</title>
-<!-- V1.0: módulo financiero independiente. Pagos por sesión/período/abono, cartera y mora,
-     planes de cuotas, analítica de ingresos, recibos PDF con folio. Colección Firestore
-     independiente "pagos" — no modifica pacientes ni sesiones existentes. -->
+<!-- V1.1: agregado toggle "visiblePaciente" en el modal de pago, para conexión con portal.html -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -252,6 +250,9 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
 .modal-hdr .x{cursor:pointer; color:var(--muted); font-size:17px;}
 .row-2{display:flex; gap:10px;}
 .row-2 > *{flex:1;}
+.toggle-row{display:flex; align-items:center; gap:8px; background:var(--pg); padding:10px 12px; border-radius:8px; margin-bottom:14px;}
+.toggle-row input{width:auto; height:auto;}
+.toggle-row label{margin:0; font-size:13px; color:var(--txt); cursor:pointer;}
 
 /* ===== TOAST (idéntico a index.html) ===== */
 #toast-container{position:fixed; bottom:18px; right:18px; z-index:100; display:flex; flex-direction:column; gap:8px; align-items:flex-end;}
@@ -545,6 +546,11 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
       </div>
 
       <div class="login-field"><label>Nota / referencia</label><textarea id="p-nota" placeholder="Referencia de transferencia, observaciones..."></textarea></div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="p-visible-paciente">
+        <label for="p-visible-paciente">Visible en el portal del paciente</label>
+      </div>
 
       <div class="login-err" id="pago-modal-err"></div>
 
@@ -1121,6 +1127,7 @@ function abrirPagoModal(id){
   document.getElementById('p-estado').value = p ? p.estado : 'pagado';
   document.getElementById('p-saldo').value = p ? (p.saldoPendiente || '') : '';
   document.getElementById('p-nota').value = p ? (p.nota || '') : '';
+  document.getElementById('p-visible-paciente').checked = p ? !!p.visiblePaciente : false;
 
   poblarSelectSesiones();
   document.getElementById('p-sesion').value = p ? (p.sesionId || '') : '';
@@ -1172,12 +1179,13 @@ document.getElementById('pago-modal-save').addEventListener('click', async () =>
   const estado = document.getElementById('p-estado').value;
   const saldoPendiente = estado === 'parcial' ? Number(document.getElementById('p-saldo').value || 0) : 0;
   const nota = document.getElementById('p-nota').value.trim();
+  const visiblePaciente = document.getElementById('p-visible-paciente').checked;
 
   if(!pacienteId){ errEl.textContent = 'Selecciona un paciente.'; return; }
   if(!monto || monto <= 0){ errEl.textContent = 'Ingresa un monto válido.'; return; }
   if(!fecha){ errEl.textContent = 'Selecciona la fecha de pago.'; return; }
 
-  const datos = { pacienteId, tipo, sesionId, monto, fecha, metodo, estado, saldoPendiente, nota };
+  const datos = { pacienteId, tipo, sesionId, monto, fecha, metodo, estado, saldoPendiente, nota, visiblePaciente };
 
   try{
     if(pagoEditingId){

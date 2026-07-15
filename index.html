@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.9.12: enlace al módulo externo Diagnóstico en el sidebar -->
+<!-- V1.9.14: modal "Equipo interno" (sidebar → perfil) para administrar la colección
+     equipoInterno (correos con acceso total), en soporte de las nuevas reglas de
+     seguridad de Firestore basadas en lista blanca por correo. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -308,6 +310,9 @@ button, input{font-family:'Inter',sans-serif;}
 .card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
 .ctit{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:10px;}
 .field{margin-bottom:10px;}
+.equipo-item{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:0.5px solid var(--brd); border-radius:8px; margin-bottom:6px; font-size:13.5px;}
+.equipo-item .del{cursor:pointer; color:var(--muted); font-size:15px;}
+.equipo-item .del:hover{color:var(--danger);}
 .field:last-child{margin-bottom:0;}
 .flbl{font-size:11.5px; color:var(--muted);}
 .fval{font-size:14px; color:var(--txt); margin-top:2px; line-height:1.5;}
@@ -563,6 +568,7 @@ button, input{font-family:'Inter',sans-serif;}
         <div class="prof-av" id="prof-av">--</div>
         <div>
           <div class="prof-nm" id="prof-nm">Psicólogo/a</div>
+          <div class="prof-rl" id="btn-equipo-interno" style="margin-bottom:2px;">Equipo interno</div>
           <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
         </div>
       </div>
@@ -625,6 +631,9 @@ button, input{font-family:'Inter',sans-serif;}
             <button class="theme-toggle" id="pf-export-btn" style="color:var(--muted); border-color:var(--brd); width:auto; padding:0 12px; gap:6px;">
               <i class="ti ti-printer"></i>Exportar historia
             </button>
+            <button class="theme-toggle" id="pf-portal-btn" style="color:var(--muted); border-color:var(--brd); width:auto; padding:0 12px; gap:6px;">
+              <i class="ti ti-lock-open"></i><span id="pf-portal-btn-lbl">Activar portal</span>
+            </button>
           </div>
           <div class="pf-grid">
             <div>
@@ -632,6 +641,10 @@ button, input{font-family:'Inter',sans-serif;}
                 <div class="ctit">Datos de contacto</div>
                 <div class="field"><div class="flbl">Correo</div><div class="fval" id="pf-email">—</div></div>
                 <div class="field"><div class="flbl">Teléfono</div><div class="fval" id="pf-phone">—</div></div>
+              </div>
+              <div class="card" id="pf-portal-card">
+                <div class="ctit">Portal del paciente</div>
+                <div class="fval" id="pf-portal-estado" style="font-size:13.5px;">Aún no activado.</div>
               </div>
               <div class="card">
                 <div class="ctit">Motivo de consulta</div>
@@ -812,6 +825,28 @@ button, input{font-family:'Inter',sans-serif;}
   </div>
 
   <!-- MODAL: NUEVA / EDITAR SESIÓN -->
+  <!-- MODAL EQUIPO INTERNO (V1.9.13) -->
+  <div id="equipo-modal-overlay" style="display:none; position:relative; z-index:50;">
+    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
+      <div style="width:100%; max-width:420px; max-height:80vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <div style="font-size:16px; font-weight:600;">Equipo interno</div>
+          <span style="cursor:pointer; color:var(--muted); font-size:17px;" id="equipo-modal-close"><i class="ti ti-x"></i></span>
+        </div>
+        <div style="font-size:12.5px; color:var(--muted); margin-bottom:16px;">
+          Correos con acceso total al sistema (agenda, pacientes, pagos, diagnóstico).
+          Cualquier otra cuenta se trata como paciente.
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <input type="email" id="equipo-nuevo-correo" placeholder="correo@ejemplo.com" style="flex:1; height:38px; border-radius:8px; border:0.5px solid var(--brd); background:var(--pg); color:var(--txt); padding:0 12px; font-size:14px; outline:none;">
+          <button class="login-btn" id="equipo-agregar-btn" style="width:auto; padding:0 16px; height:38px; margin-top:0;">Agregar</button>
+        </div>
+        <div id="equipo-lista"><div class="empty-state">Cargando...</div></div>
+        <div class="login-err" id="equipo-modal-err"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="sesion-modal-overlay" style="display:none; position:relative; z-index:50;">
     <div style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px;">
       <div style="width:100%; max-width:420px; max-height:88vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;">
@@ -860,6 +895,11 @@ button, input{font-family:'Inter',sans-serif;}
           <span style="font-size:13px; color:var(--muted);">veces</span>
         </div>
 
+        <div class="login-field" style="display:flex; align-items:center; gap:8px; background:var(--pg); padding:10px 12px; border-radius:8px;">
+          <input type="checkbox" id="sf-visible-paciente" style="width:auto; margin:0;">
+          <label for="sf-visible-paciente" style="margin:0; cursor:pointer; font-size:13px;">Visible en el portal del paciente (fecha, hora y modalidad — la nota nunca se muestra)</label>
+        </div>
+
         <div class="login-err" id="sesion-modal-err"></div>
 
         <div style="display:flex; gap:10px; margin-top:8px;">
@@ -895,10 +935,11 @@ button, input{font-family:'Inter',sans-serif;}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail,
+  createUserWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs,
+  getFirestore, collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs, setDoc,
   addDoc, updateDoc, deleteDoc, writeBatch, enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
@@ -933,6 +974,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+/* ===== APP SECUNDARIA (V1.9.13) =====
+   createUserWithEmailAndPassword inicia sesión automáticamente con la cuenta creada,
+   lo que cerraría tu sesión de psicólogo/a. Usamos una segunda instancia de Firebase
+   solo para crear la cuenta del paciente, sin tocar tu sesión principal. */
+const appPortal = initializeApp(firebaseConfig, 'portal-activador');
+const authPortal = getAuth(appPortal);
 
 /* ===== MODO OFFLINE (V1.9.10) =====
    Guarda una copia local (IndexedDB) de lo último leído, así que si se corta el
@@ -1722,6 +1770,7 @@ function openSesionModal(sid, prefill){
   const repetirWrap = document.getElementById('sf-repetir-wrap');
   document.getElementById('sf-repetir').checked = false;
   document.getElementById('sf-repeticiones').value = 4;
+  document.getElementById('sf-visible-paciente').checked = false;
   if(sid){
     const s = todasSesionesCache.find(x => x.id === sid);
     if(!s) return;
@@ -1735,6 +1784,7 @@ function openSesionModal(sid, prefill){
     document.getElementById('sf-modalidad').value = s.modalidad || 'presencial';
     document.getElementById('sf-estado').value = s.estado || 'upcoming';
     document.getElementById('sf-nota').value = s.nota || '';
+    document.getElementById('sf-visible-paciente').checked = !!s.visiblePaciente;
   } else if(prefill){
     // V1.9.9: duplicar sesión — copia los datos pero deja fecha/nota para que el usuario ajuste
     repetirWrap.style.display = 'flex';
@@ -1813,7 +1863,8 @@ document.getElementById('sesion-modal-save').addEventListener('click', async () 
     numeroSesion: parseInt(document.getElementById('sf-numero').value) || null,
     modalidad: document.getElementById('sf-modalidad').value,
     estado: document.getElementById('sf-estado').value,
-    nota: document.getElementById('sf-nota').value.trim()
+    nota: document.getElementById('sf-nota').value.trim(),
+    visiblePaciente: document.getElementById('sf-visible-paciente').checked
   };
 
   // Aviso puntual al guardar por misma hora exacta (V1.8). La alarma permanente
@@ -1898,6 +1949,121 @@ async function eliminarSesionDefinitivo(sid){
 }
 
 /* ===== FICHA DE PACIENTE ===== */
+function renderEstadoPortal(p){
+  const estadoEl = document.getElementById('pf-portal-estado');
+  const btnLbl = document.getElementById('pf-portal-btn-lbl');
+  if(p.authUid){
+    estadoEl.innerHTML = `<span style="color:var(--pri); font-weight:600;">Activo</span> — el paciente puede iniciar sesión con ${p.email || 'su correo'}.`;
+    btnLbl.textContent = 'Reenviar acceso';
+  } else {
+    estadoEl.textContent = 'Aún no activado.';
+    btnLbl.textContent = 'Activar portal';
+  }
+}
+
+document.getElementById('pf-portal-btn').addEventListener('click', async () => {
+  const p = pacientesCache[fichaActualId];
+  if(!p) return;
+
+  if(!p.email){
+    showToast('Este paciente no tiene correo registrado. Agrégalo antes de activar el portal.', 'warn');
+    return;
+  }
+
+  // Reenviar acceso: si ya tiene cuenta, solo reenvía el correo de contraseña
+  if(p.authUid){
+    try{
+      await sendPasswordResetEmail(authPortal, p.email);
+      showToast(`Correo de acceso reenviado a ${p.email}.`, 'ok');
+    } catch(err){
+      console.error(err);
+      showToast('No pudimos reenviar el correo. Verifica que el correo sea válido.', 'err');
+    }
+    return;
+  }
+
+  if(!confirm(`¿Activar el portal para ${p.nombre}? Se creará una cuenta con ${p.email} y se le enviará un correo para crear su contraseña.`)) return;
+
+  try{
+    // Contraseña temporal aleatoria: el paciente nunca la usa, de inmediato le llega
+    // el correo de "crear tu contraseña" y la sobreescribe.
+    const passTemp = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const cred = await createUserWithEmailAndPassword(authPortal, p.email, passTemp);
+    await updateDoc(doc(db, 'pacientes', fichaActualId), { authUid: cred.user.uid });
+    await sendPasswordResetEmail(authPortal, p.email);
+    await signOut(authPortal); // cerramos la sesión de la app secundaria, no afecta la tuya
+    showToast(`Portal activado. Se envió un correo a ${p.email} para crear su contraseña.`, 'ok');
+  } catch(err){
+    console.error(err);
+    if(err.code === 'auth/email-already-in-use'){
+      showToast('Ese correo ya tiene una cuenta de portal creada (quizás de otro paciente). Verifica el correo.', 'err');
+    } else {
+      showToast('No pudimos activar el portal. Verifica el correo e intenta de nuevo.', 'err');
+    }
+  }
+});
+
+/* ===== MODAL: EQUIPO INTERNO (V1.9.13) =====
+   Colección "equipoInterno", id de documento = correo. Solo cuentas ya listadas
+   aquí pueden leer/escribir todo (según las reglas de Firestore). */
+const equipoOverlay = document.getElementById('equipo-modal-overlay');
+document.getElementById('btn-equipo-interno').addEventListener('click', () => {
+  document.getElementById('equipo-modal-err').textContent = '';
+  document.getElementById('equipo-nuevo-correo').value = '';
+  cargarListaEquipo();
+  equipoOverlay.style.display = 'block';
+});
+document.getElementById('equipo-modal-close').addEventListener('click', () => equipoOverlay.style.display = 'none');
+
+async function cargarListaEquipo(){
+  const cont = document.getElementById('equipo-lista');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  try{
+    const snap = await getDocs(collection(db, 'equipoInterno'));
+    if(snap.empty){ cont.innerHTML = '<div class="empty-state">Sin correos registrados.</div>'; return; }
+    cont.innerHTML = snap.docs.map(d => `
+      <div class="equipo-item">
+        <span>${d.id}</span>
+        <span class="del" onclick="window._quitarEquipo('${d.id}')"><i class="ti ti-trash"></i></span>
+      </div>`).join('');
+  } catch(err){
+    console.error(err);
+    cont.innerHTML = '<div class="empty-state">No pudimos cargar la lista.</div>';
+  }
+}
+
+document.getElementById('equipo-agregar-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('equipo-modal-err');
+  errEl.textContent = '';
+  const correo = document.getElementById('equipo-nuevo-correo').value.trim().toLowerCase();
+  if(!correo || !correo.includes('@')){ errEl.textContent = 'Ingresa un correo válido.'; return; }
+  try{
+    await setDoc(doc(db, 'equipoInterno', correo), { agregadoEn: new Date().toISOString() });
+    document.getElementById('equipo-nuevo-correo').value = '';
+    showToast('Correo agregado al equipo interno.', 'ok');
+    cargarListaEquipo();
+  } catch(err){
+    console.error(err);
+    errEl.textContent = 'No pudimos agregar el correo. Intenta de nuevo.';
+  }
+});
+
+window._quitarEquipo = async function(correo){
+  if(correo === auth.currentUser?.email){
+    showToast('No puedes quitarte a ti mismo del equipo interno desde aquí.', 'warn');
+    return;
+  }
+  if(!confirm(`¿Quitar a ${correo} del equipo interno? Perderá acceso administrativo.`)) return;
+  try{
+    await deleteDoc(doc(db, 'equipoInterno', correo));
+    showToast('Correo eliminado del equipo interno.', 'ok');
+    cargarListaEquipo();
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos eliminar el correo.', 'err');
+  }
+};
+
 function openFicha(pid){
   const p = pacientesCache[pid];
   if(!p) return;
@@ -1910,6 +2076,7 @@ function openFicha(pid){
   document.getElementById('pf-email').textContent = p.email || '—';
   document.getElementById('pf-phone').textContent = p.telefono || '—';
   document.getElementById('pf-motivo').textContent = p.motivoConsulta || 'Sin información registrada.';
+  renderEstadoPortal(p);
 
   const sesionesPaciente = todasSesionesCache
     .filter(s => s.pacienteId === pid && !s.eliminada)
