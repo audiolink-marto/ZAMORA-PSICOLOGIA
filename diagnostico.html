@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsicoGestión — Diagnóstico</title>
+<!-- V1.0: módulo clínico independiente. Diagnóstico base (CIE-10/DSM-5) + bitácora de
+     evolución fechada. Cada entrada con toggle "visiblePaciente" para conexión futura
+     con el portal del paciente. Colección Firestore independiente "diagnosticos". -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+
+<script>
+(function(){
+  var t = localStorage.getItem('psicogestion_theme_v1') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+
+<style>
+/* ============================================
+   VARIABLES DE TEMA (idénticas a index.html / pagos.html)
+   ============================================ */
+:root,
+[data-theme="light"]{
+  --sb:#1A2332; --sb-txt:#A8B8C8; --sb-txt-dim:rgba(255,255,255,0.32);
+  --pri:#4A7B6F; --pri-lt:#E3EDE9; --pri-on-sb:#7EC8B0;
+  --warm:#B8874A; --warm-lt:#F5EAD8;
+  --pg:#EEE9E1; --crd:#FFFFFF;
+  --txt:#1A2332; --muted:#8B8E96;
+  --brd:#DDD9D1;
+  --done:#999BA2; --done-lt:#F1F0EE;
+  --virt-bg:#EEF2FB; --virt-txt:#5068B0;
+  --pres-bg:#FFF4E6; --pres-txt:#9A6830;
+  --danger:#B0503E; --danger-lt:#F5DED9;
+  --activo:#4A7B6F; --activo-lt:#E3EDE9;
+  --remision:#B8874A; --remision-lt:#F5EAD8;
+  --resuelto:#8B8E96; --resuelto-lt:#F1F0EE;
+}
+[data-theme="dark"]{
+  --sb:#0F1512; --sb-txt:#8A9A93; --sb-txt-dim:rgba(255,255,255,0.26);
+  --pri:#5A9885; --pri-lt:#16221D; --pri-on-sb:#5A9885;
+  --warm:#C99A5B; --warm-lt:#241E13;
+  --pg:#161B19; --crd:#1D2320;
+  --txt:#EDEDE9; --muted:#8A9089;
+  --brd:#2C332F;
+  --done:#6B716C; --done-lt:#232723;
+  --virt-bg:#1B1F2C; --virt-txt:#8B9DE0;
+  --pres-bg:#241E13; --pres-txt:#C99A5B;
+  --danger:#D97B65; --danger-lt:#2A1B17;
+  --activo:#5A9885; --activo-lt:#16221D;
+  --remision:#C99A5B; --remision-lt:#241E13;
+  --resuelto:#8A9089; --resuelto-lt:#232723;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--pg);
+  color:var(--txt);
+  transition:background .2s ease, color .2s ease;
+  -webkit-font-smoothing:antialiased;
+}
+button, input, select, textarea{font-family:'Inter',sans-serif;}
+
+/* ===== LOGIN ===== */
+#login-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--pg); padding:20px;}
+.login-card{width:100%; max-width:360px; background:var(--crd); border:0.5px solid var(--brd); border-radius:14px; padding:32px 28px;}
+.login-logo{font-size:20px; font-weight:700; color:var(--txt); text-align:center;}
+.login-sub{font-size:13.5px; color:var(--muted); text-align:center; margin-top:4px; margin-bottom:26px;}
+.login-field{margin-bottom:14px;}
+.login-field label{font-size:12.5px; color:var(--muted); display:block; margin-bottom:5px;}
+.login-field input, .login-field select{
+  width:100%; height:40px; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:0 12px; font-size:14.5px; outline:none;
+}
+.login-field input:focus, .login-field select:focus{border-color:var(--pri);}
+.login-field textarea{
+  width:100%; border-radius:8px; border:0.5px solid var(--brd);
+  background:var(--pg); color:var(--txt); padding:8px 12px; font-size:14.5px; outline:none;
+  font-family:'Inter',sans-serif; resize:vertical; min-height:60px;
+}
+.login-btn{width:100%; height:42px; border-radius:8px; border:none; background:var(--pri); color:#fff; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:6px;}
+.login-btn:hover{opacity:.9;}
+.login-btn.ghost{background:var(--crd); color:var(--txt); border:0.5px solid var(--brd);}
+.login-btn.danger{background:var(--danger);}
+.login-err{font-size:13px; color:var(--danger); margin-top:10px; text-align:center; min-height:16px;}
+
+/* ===== APP SHELL ===== */
+#app-screen{display:none; height:100vh; overflow:hidden;}
+.app{display:flex; height:100%; width:100%;}
+.sb{width:230px; background:var(--sb); display:flex; flex-direction:column; flex-shrink:0;}
+.sb-logo{padding:20px 18px 14px; border-bottom:0.5px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:flex-start;}
+.sb-logo .aname{font-size:15.5px; font-weight:600; color:#fff;}
+.sb-logo .asub{font-size:11px; color:var(--sb-txt-dim); margin-top:2px;}
+.theme-toggle{
+  width:28px; height:28px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12);
+  background:transparent; color:var(--sb-txt); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:15px; flex-shrink:0;
+}
+.theme-toggle:hover{background:rgba(255,255,255,0.06);}
+.sb-nav{padding:10px 8px;}
+.nav-item{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:7px; cursor:pointer; color:var(--sb-txt); font-size:13.5px; transition:background .15s;}
+.nav-item:hover{background:rgba(255,255,255,0.05);}
+.nav-item.active{background:rgba(74,123,111,0.22); color:#fff;}
+.nav-item.active i{color:var(--pri-on-sb);}
+.nav-item i{font-size:17px; color:rgba(255,255,255,0.35); width:18px; text-align:center;}
+.sb-back{margin:8px 8px 0; padding:9px 10px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.1); color:var(--sb-txt); font-size:12.5px; display:flex; align-items:center; gap:8px; cursor:pointer;}
+.sb-back:hover{background:rgba(255,255,255,0.05);}
+.sb-lbl{font-size:11px; color:var(--sb-txt-dim); letter-spacing:.8px; text-transform:uppercase; padding:8px 8px 6px; font-weight:500;}
+.sb-search{padding:0 8px 8px;}
+.sb-search input{width:100%; height:32px; border-radius:7px; border:0.5px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); color:#fff; padding:0 10px; font-size:12.5px; outline:none; font-family:'Inter',sans-serif;}
+.sb-search input::placeholder{color:var(--sb-txt-dim);}
+.sb-search input:focus{border-color:var(--pri);}
+.sb-pts{padding:8px 8px; flex:1; overflow-y:auto;}
+.pt-item{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; transition:background .15s;}
+.pt-item:hover{background:rgba(255,255,255,0.05);}
+.pt-item.active{background:rgba(74,123,111,0.22);}
+.pt-av{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; flex-shrink:0; color:#fff;}
+.pt-nm{font-size:13px; color:var(--sb-txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pt-dx{font-size:10.5px; color:var(--sb-txt-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.pt-empty{font-size:12.5px; color:var(--sb-txt-dim); padding:6px 8px;}
+.sb-prof{padding:12px 14px; border-top:0.5px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:10px;}
+.prof-av{width:30px; height:30px; border-radius:50%; background:var(--pri); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex-shrink:0;}
+.prof-nm{font-size:13px; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px;}
+.prof-rl{font-size:11px; color:var(--sb-txt-dim); cursor:pointer;}
+.prof-rl:hover{color:var(--sb-txt);}
+
+.main{flex:1; background:var(--pg); display:flex; flex-direction:column; overflow:hidden; min-width:0;}
+.view{display:none; height:100%; flex-direction:column; overflow:hidden;}
+.view.active{display:flex;}
+.mhdr{padding:16px 22px 10px; border-bottom:0.5px solid var(--brd); flex-shrink:0;}
+.mdate{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px;}
+.mtitle{font-size:19px; font-weight:600; color:var(--txt); margin-top:2px;}
+.mbody{flex:1; overflow-y:auto; padding:18px 22px;}
+.pac-search-wrap{position:relative; margin-top:12px;}
+.pac-search-wrap input{width:100%; height:38px; border-radius:8px; border:0.5px solid var(--brd); background:var(--crd); color:var(--txt); padding:0 12px 0 34px; font-size:14px; outline:none; font-family:'Inter',sans-serif;}
+.pac-search-wrap input:focus{border-color:var(--pri);}
+.pac-search-wrap i{position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:16px;}
+
+/* ===== TARJETA PACIENTE (lista) ===== */
+.dx-card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:border-color .15s;}
+.dx-card:hover{border-color:var(--pri);}
+.dx-av{width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; color:#fff;}
+.dx-info{flex:1; min-width:0;}
+.dx-nm{font-size:14.5px; font-weight:600; color:var(--txt);}
+.dx-sub{font-size:12.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:14px;}
+
+/* ===== BADGES DE ESTADO ===== */
+.badge{font-size:11.5px; padding:3px 8px; border-radius:4px; font-weight:500; flex-shrink:0;}
+.b-activo{background:var(--activo-lt); color:var(--activo);}
+.b-remision{background:var(--remision-lt); color:var(--remision);}
+.b-resuelto{background:var(--resuelto-lt); color:var(--resuelto);}
+.b-visible{background:var(--pri-lt); color:var(--pri);}
+.b-oculto{background:var(--pg); color:var(--muted);}
+
+/* ===== FICHA DE DIAGNÓSTICO ===== */
+.pf-body{flex:1; overflow-y:auto; padding:20px 22px;}
+.pf-back{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px; margin-bottom:16px; cursor:pointer; width:fit-content;}
+.pf-back:hover{color:var(--txt);}
+.pf-hrow{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+.pf-av{width:52px; height:52px; border-radius:50%; background:var(--pri); color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:700; flex-shrink:0;}
+.pf-nm{font-size:19px; font-weight:600; color:var(--txt);}
+.pf-sub{font-size:13px; color:var(--muted); margin-top:2px;}
+.pf-grid{display:grid; grid-template-columns:1fr 1.4fr; gap:16px;}
+.card{background:var(--crd); border:0.5px solid var(--brd); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
+.ctit{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:500; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;}
+.ctit-btn{font-size:11px; color:var(--pri); cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;}
+.ctit-btn:hover{text-decoration:underline;}
+
+/* Diagnóstico base */
+.dxb-item{border:0.5px solid var(--brd); border-radius:8px; padding:12px 14px; margin-bottom:10px;}
+.dxb-item:last-child{margin-bottom:0;}
+.dxb-hdr{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+.dxb-codigo{font-size:13.5px; font-weight:700; color:var(--txt); font-family:monospace;}
+.dxb-sistema{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;}
+.dxb-desc{font-size:13.5px; color:var(--txt); margin-top:6px; line-height:1.5;}
+.dxb-fecha{font-size:11.5px; color:var(--muted); margin-top:6px;}
+.dxb-actions{display:flex; gap:6px; flex-shrink:0;}
+.icon-btn{width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); font-size:14px; border:0.5px solid var(--brd);}
+.icon-btn:hover{color:var(--pri); border-color:var(--pri);}
+.icon-btn.del:hover{color:var(--danger); border-color:var(--danger);}
+
+/* Bitácora / timeline */
+.timeline{position:relative; padding-left:2px;}
+.tl-item{position:relative; padding-bottom:16px; border-left:1.5px solid var(--brd); padding-left:16px; margin-left:4px;}
+.tl-item:last-child{border-left:1.5px solid transparent; padding-bottom:0;}
+.tl-dot{position:absolute; left:-5.5px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--pri);}
+.tl-hdr{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.tl-dt{font-size:12px; color:var(--muted); font-weight:500;}
+.tl-nt{font-size:13.5px; color:var(--txt); margin-top:4px; line-height:1.55; white-space:pre-wrap;}
+.tl-actions{display:flex; gap:6px; flex-shrink:0;}
+
+/* ===== MODALES ===== */
+.modal-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:60; align-items:center; justify-content:center; padding:20px;}
+.modal-box{width:100%; max-width:460px; max-height:88vh; overflow-y:auto; background:var(--crd); border-radius:14px; border:0.5px solid var(--brd); padding:24px;}
+.modal-hdr{display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
+.modal-hdr .t{font-size:16px; font-weight:600;}
+.modal-hdr .x{cursor:pointer; color:var(--muted); font-size:17px;}
+.row-2{display:flex; gap:10px;}
+.row-2 > *{flex:1;}
+.toggle-row{display:flex; align-items:center; gap:8px; background:var(--pg); padding:10px 12px; border-radius:8px; margin-bottom:14px;}
+.toggle-row input{width:auto; height:auto;}
+.toggle-row label{margin:0; font-size:13px; color:var(--txt); cursor:pointer;}
+.dx-suggest{max-height:160px; overflow-y:auto; border:0.5px solid var(--brd); border-radius:8px; margin-top:6px; display:none;}
+.dx-suggest.show{display:block;}
+.dx-suggest-item{padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:0.5px solid var(--brd);}
+.dx-suggest-item:last-child{border-bottom:none;}
+.dx-suggest-item:hover{background:var(--pg);}
+.dx-suggest-item b{font-family:monospace;}
+
+/* ===== TOAST ===== */
+#toast-container{position:fixed; bottom:18px; right:18px; z-index:100; display:flex; flex-direction:column; gap:8px; align-items:flex-end;}
+.toast{background:var(--sb); color:#fff; font-size:13.5px; padding:11px 16px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2); display:flex; align-items:center; gap:8px; max-width:300px; opacity:0; transform:translateY(8px); transition:opacity .2s ease, transform .2s ease;}
+.toast.show{opacity:1; transform:translateY(0);}
+.toast i{font-size:16px; flex-shrink:0;}
+.toast.t-ok i{color:var(--pri-on-sb);}
+.toast.t-warn i{color:var(--warm);}
+.toast.t-err i{color:var(--danger);}
+
+/* ===== MOBILE ===== */
+.mobile-topbar{display:none;}
+.mobile-bottomnav{display:none;}
+@media (max-width: 768px){
+  .sb{display:none;}
+  .app{flex-direction:column;}
+  .mobile-topbar{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--sb); flex-shrink:0;}
+  .mobile-topbar .aname{font-size:15px; font-weight:600; color:#fff;}
+  .mobile-topbar-actions{display:flex; gap:8px;}
+  .main{padding-bottom:0;}
+  .pf-grid{grid-template-columns:1fr;}
+  .mhdr{padding:14px 16px 8px;}
+  .mbody, .pf-body{padding:12px 16px;}
+}
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:var(--brd); border-radius:4px;}
+.ti{font-family:"tabler-icons" !important; font-style:normal !important; line-height:1 !important;}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">PsicoGestión</div>
+    <div class="login-sub">Módulo de Diagnóstico</div>
+    <div class="login-field">
+      <label>Correo</label>
+      <input type="email" id="login-email" placeholder="nombre@correo.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="login-btn">Iniciar sesión</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-screen">
+  <div class="mobile-topbar">
+    <div class="aname">Diagnóstico</div>
+    <div class="mobile-topbar-actions">
+      <button class="theme-toggle" id="theme-toggle-m" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+      <button class="theme-toggle" id="logout-btn-m" aria-label="Cerrar sesión"><i class="ti ti-logout"></i></button>
+    </div>
+  </div>
+  <div class="app">
+    <aside class="sb">
+      <div class="sb-logo">
+        <div>
+          <div class="aname">Diagnóstico</div>
+          <div class="asub">Módulo clínico</div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
+      </div>
+      <div class="sb-nav">
+        <div class="sb-back" id="volver-agenda"><i class="ti ti-arrow-left"></i>Volver a la agenda</div>
+      </div>
+      <div class="sb-lbl">Pacientes</div>
+      <div class="sb-search"><input type="text" id="sb-buscador" placeholder="Buscar paciente..."></div>
+      <div class="sb-pts" id="sb-pacientes-list"><div class="pt-empty">Cargando...</div></div>
+      <div class="sb-prof">
+        <div class="prof-av" id="prof-av">--</div>
+        <div>
+          <div class="prof-nm" id="prof-nm">Psicólogo/a</div>
+          <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <!-- ===== VISTA: LISTA GENERAL ===== -->
+      <section class="view active" id="view-lista">
+        <div class="mhdr">
+          <div class="mdate" id="lista-date"></div>
+          <div class="mtitle">Pacientes</div>
+          <div class="pac-search-wrap">
+            <i class="ti ti-search"></i>
+            <input type="text" id="lista-buscador" placeholder="Buscar por nombre o código diagnóstico...">
+          </div>
+        </div>
+        <div class="mbody" id="lista-dx">
+          <div class="empty-state">Cargando pacientes...</div>
+        </div>
+      </section>
+
+      <!-- ===== VISTA: FICHA DE PACIENTE ===== -->
+      <section class="view" id="view-ficha">
+        <div class="pf-body">
+          <div class="pf-back" id="pf-volver"><i class="ti ti-arrow-left"></i>Volver a la lista</div>
+          <div class="pf-hrow">
+            <div class="pf-av" id="pf-av">--</div>
+            <div>
+              <div class="pf-nm" id="pf-nm">Paciente</div>
+              <div class="pf-sub" id="pf-sub">—</div>
+            </div>
+          </div>
+
+          <div class="pf-grid">
+            <div>
+              <div class="card">
+                <div class="ctit">Diagnóstico base
+                  <span class="ctit-btn" id="btn-nuevo-dxbase">+ Agregar</span>
+                </div>
+                <div id="dxb-lista"><div class="empty-state" style="padding:16px 0;">Sin diagnóstico registrado.</div></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="card" style="min-height:200px;">
+                <div class="ctit">Bitácora de evolución
+                  <span class="ctit-btn" id="btn-nueva-entrada">+ Nueva entrada</span>
+                </div>
+                <div class="timeline" id="bitacora-lista"><div class="empty-state" style="padding:16px 0;">Sin entradas aún.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== MODAL: DIAGNÓSTICO BASE ===== -->
+  <div class="modal-overlay" id="dxb-modal-overlay">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="t" id="dxb-modal-title">Nuevo diagnóstico</div>
+        <span class="x" id="dxb-modal-close"><i class="ti ti-x"></i></span>
+      </div>
+      <div class="row-2">
+        <div class="login-field"><label>Sistema</label>
+          <select id="dxb-sistema">
+            <option value="CIE-10">CIE-10</option>
+            <option value="DSM-5">DSM-5</option>
+          </select>
+        </div>
+        <div class="login-field" style="position:relative;"><label>Código</label>
+          <input type="text" id="dxb-codigo" placeholder="ej. F41.1" autocomplete="off">
+          <div class="dx-suggest" id="dxb-suggest"></div>
+        </div>
+      </div>
+      <div class="login-field"><label>Descripción</label><textarea id="dxb-desc" placeholder="ej. Trastorno de ansiedad generalizada"></textarea></div>
+      <div class="row-2">
+        <div class="login-field"><label>Fecha de inicio</label><input type="date" id="dxb-fecha"></div>
+        <div class="login-field"><label>Estado</label>
+          <select id="dxb-estado">
+            <option value="activo">Activo</option>
+            <option value="remision">En remisión</option>
+            <option value="resuelto">Resuelto</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="dxb-visible">
+        <label for="dxb-visible">Visible en el portal del paciente</label>
+      </div>
+      <div class="login-err" id="dxb-modal-err"></div>
+      <div class="row-2" style="margin-top:8px;">
+        <button class="login-btn ghost" id="dxb-modal-cancel">Cancelar</button>
+        <button class="login-btn" id="dxb-modal-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: ENTRADA DE BITÁCORA ===== -->
+  <div class="modal-overlay" id="bit-modal-overlay">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="t" id="bit-modal-title">Nueva entrada</div>
+        <span class="x" id="bit-modal-close"><i class="ti ti-x"></i></span>
+      </div>
+      <div class="login-field"><label>Fecha</label><input type="date" id="bit-fecha"></div>
+      <div class="login-field"><label>Nota de evolución</label><textarea id="bit-nota" placeholder="Observaciones, avances, cambios en el cuadro clínico..." style="min-height:110px;"></textarea></div>
+      <div class="toggle-row">
+        <input type="checkbox" id="bit-visible">
+        <label for="bit-visible">Visible en el portal del paciente</label>
+      </div>
+      <div class="login-err" id="bit-modal-err"></div>
+      <div class="row-2" style="margin-top:8px;">
+        <button class="login-btn ghost" id="bit-modal-cancel">Cancelar</button>
+        <button class="login-btn" id="bit-modal-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, collection, doc, onSnapshot, updateDoc, setDoc, getDoc,
+  enableIndexedDbPersistence
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* ============================================
+   FIREBASE CONFIG — mismo proyecto zamora-psicologia
+   ============================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyA3BpiEbWY7XUZskliM56ZGkpioSmjJbwA",
+  authDomain: "zamora-psicologia.firebaseapp.com",
+  projectId: "zamora-psicologia",
+  storageBucket: "zamora-psicologia.firebasestorage.app",
+  messagingSenderId: "1018710047961",
+  appId: "1:1018710047961:web:bc619e40b828d35347d2c8"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+try{ await enableIndexedDbPersistence(db); } catch(err){ console.warn('Offline no disponible aquí:', err.code); }
+
+/* ============================================
+   ESTRUCTURA DE DATOS — Colección "diagnosticos" (NUEVA, independiente)
+   Un documento por paciente, con id = pacienteId:
+     pacienteId, dxBase: [{ id, sistema, codigo, descripcion, fecha, estado, visiblePaciente }],
+     bitacora: [{ id, fecha, nota, visiblePaciente }]
+   No se modifica ningún documento existente de "pacientes" ni "sesiones".
+   ============================================ */
+
+/* ===== THEME TOGGLE ===== */
+const themeToggle = document.getElementById('theme-toggle');
+const themeToggleM = document.getElementById('theme-toggle-m');
+function applyThemeIcon(){
+  const t = document.documentElement.getAttribute('data-theme');
+  const icon = t === 'dark' ? '<i class="ti ti-sun"></i>' : '<i class="ti ti-moon"></i>';
+  if(themeToggle) themeToggle.innerHTML = icon;
+  if(themeToggleM) themeToggleM.innerHTML = icon;
+}
+applyThemeIcon();
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('psicogestion_theme_v1', next);
+  applyThemeIcon();
+}
+if(themeToggle) themeToggle.addEventListener('click', toggleTheme);
+if(themeToggleM) themeToggleM.addEventListener('click', toggleTheme);
+
+document.getElementById('lista-date').textContent =
+  new Date().toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+document.getElementById('volver-agenda').addEventListener('click', () => { window.location.href = 'index.html'; });
+
+/* ===== LOGIN ===== */
+const loginScreen = document.getElementById('login-screen');
+const appScreen = document.getElementById('app-screen');
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const loginErr = document.getElementById('login-err');
+  loginErr.textContent = '';
+  if(!email || !pass){ loginErr.textContent = 'Completa correo y contraseña.'; return; }
+  signInWithEmailAndPassword(auth, email, pass)
+    .catch(err => { loginErr.textContent = 'No pudimos iniciar sesión. Verifica tus datos.'; console.error(err); });
+}
+document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+const logoutBtnM = document.getElementById('logout-btn-m');
+if(logoutBtnM) logoutBtnM.addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+  if(user){
+    loginScreen.style.display = 'none';
+    appScreen.style.display = 'block';
+    document.getElementById('prof-nm').textContent = user.email;
+    document.getElementById('prof-av').textContent = (user.email||'??').slice(0,2).toUpperCase();
+    startListeners();
+  } else {
+    loginScreen.style.display = 'flex';
+    appScreen.style.display = 'none';
+  }
+});
+
+/* ===== TOAST ===== */
+function showToast(msg, tipo){
+  tipo = tipo || 'ok';
+  const cont = document.getElementById('toast-container');
+  if(!cont) return;
+  const icon = tipo === 'ok' ? 'ti-circle-check' : (tipo === 'warn' ? 'ti-alert-triangle' : 'ti-alert-circle');
+  const el = document.createElement('div');
+  el.className = `toast t-${tipo}`;
+  el.innerHTML = `<i class="ti ${icon}"></i><span>${msg}</span>`;
+  cont.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, 3200);
+}
+function iniciales(nombre){ return (nombre||'??').split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase(); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ============================================
+   LISTA CURADA — códigos más comunes en consulta psicológica.
+   Es un punto de partida; el campo sigue siendo texto libre editable,
+   esto solo ayuda a escribir más rápido con autocompletar.
+   ============================================ */
+const CODIGOS_COMUNES = [
+  { sistema:'CIE-10', codigo:'F32.9', desc:'Episodio depresivo, no especificado' },
+  { sistema:'CIE-10', codigo:'F33.1', desc:'Trastorno depresivo recurrente, episodio moderado' },
+  { sistema:'CIE-10', codigo:'F41.1', desc:'Trastorno de ansiedad generalizada' },
+  { sistema:'CIE-10', codigo:'F41.0', desc:'Trastorno de pánico' },
+  { sistema:'CIE-10', codigo:'F40.1', desc:'Fobia social' },
+  { sistema:'CIE-10', codigo:'F43.1', desc:'Trastorno de estrés postraumático' },
+  { sistema:'CIE-10', codigo:'F43.2', desc:'Trastorno de adaptación' },
+  { sistema:'CIE-10', codigo:'F60.3', desc:'Trastorno de inestabilidad emocional (límite)' },
+  { sistema:'CIE-10', codigo:'F90.0', desc:'Trastorno de la actividad y la atención (TDAH)' },
+  { sistema:'CIE-10', codigo:'F50.0', desc:'Anorexia nerviosa' },
+  { sistema:'CIE-10', codigo:'F50.2', desc:'Bulimia nerviosa' },
+  { sistema:'CIE-10', codigo:'F42.9', desc:'Trastorno obsesivo-compulsivo, no especificado' },
+  { sistema:'CIE-10', codigo:'Z63.0', desc:'Problemas en la relación con el cónyuge o pareja' },
+  { sistema:'CIE-10', codigo:'Z63.4', desc:'Duelo no complicado' },
+  { sistema:'DSM-5', codigo:'300.02', desc:'Trastorno de ansiedad generalizada' },
+  { sistema:'DSM-5', codigo:'296.XX', desc:'Trastorno depresivo mayor' },
+  { sistema:'DSM-5', codigo:'309.81', desc:'Trastorno de estrés postraumático' },
+  { sistema:'DSM-5', codigo:'300.4', desc:'Trastorno depresivo persistente (distimia)' },
+  { sistema:'DSM-5', codigo:'301.83', desc:'Trastorno límite de la personalidad' },
+  { sistema:'DSM-5', codigo:'314.01', desc:'TDAH, presentación combinada' },
+];
+
+/* ===== DATOS EN MEMORIA ===== */
+let pacientesCache = {};
+let dxCache = {};      // pacienteId -> { dxBase:[], bitacora:[] }
+let pacienteActivoId = null;
+
+/* ===== LISTENERS FIRESTORE ===== */
+function startListeners(){
+  onSnapshot(collection(db, 'pacientes'), (snap) => {
+    pacientesCache = {};
+    snap.forEach(d => { pacientesCache[d.id] = d.data(); });
+    renderSidebarPacientes();
+    renderListaDx();
+    if(pacienteActivoId) renderFicha(pacienteActivoId);
+  }, err => console.error('Error cargando pacientes:', err));
+
+  onSnapshot(collection(db, 'diagnosticos'), (snap) => {
+    dxCache = {};
+    snap.forEach(d => { dxCache[d.id] = d.data(); });
+    renderListaDx();
+    if(pacienteActivoId) renderFicha(pacienteActivoId);
+  }, err => console.error('Error cargando diagnósticos:', err));
+}
+
+async function ensureDxDoc(pacienteId){
+  if(dxCache[pacienteId]) return dxCache[pacienteId];
+  const ref = doc(db, 'diagnosticos', pacienteId);
+  const snap = await getDoc(ref);
+  if(!snap.exists()){
+    const nuevo = { pacienteId, dxBase: [], bitacora: [] };
+    await setDoc(ref, nuevo);
+    return nuevo;
+  }
+  return snap.data();
+}
+
+/* ===== SIDEBAR: LISTA DE PACIENTES (buscador) ===== */
+function renderSidebarPacientes(filtro){
+  filtro = (filtro || '').toLowerCase();
+  const cont = document.getElementById('sb-pacientes-list');
+  const ids = Object.keys(pacientesCache)
+    .filter(id => !filtro || (pacientesCache[id].nombre||'').toLowerCase().includes(filtro))
+    .sort((a,b) => (pacientesCache[a].nombre||'').localeCompare(pacientesCache[b].nombre||''));
+  if(ids.length === 0){ cont.innerHTML = '<div class="pt-empty">Sin resultados.</div>'; return; }
+  cont.innerHTML = ids.map(id => {
+    const pac = pacientesCache[id];
+    const dx = dxCache[id];
+    const dxActivo = dx && dx.dxBase && dx.dxBase.find(d => d.estado === 'activo');
+    return `<div class="pt-item ${id===pacienteActivoId?'active':''}" onclick="window._abrirFicha('${id}')">
+      <div class="pt-av" style="background:${pac.colorAv || '#4A7B6F'}">${iniciales(pac.nombre)}</div>
+      <div>
+        <div class="pt-nm">${pac.nombre || 'Paciente'}</div>
+        ${dxActivo ? `<div class="pt-dx">${dxActivo.codigo}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('sb-buscador').addEventListener('input', (e) => renderSidebarPacientes(e.target.value));
+
+/* ===== VISTA: LISTA GENERAL ===== */
+function renderListaDx(filtro){
+  filtro = (filtro || document.getElementById('lista-buscador').value || '').toLowerCase();
+  const cont = document.getElementById('lista-dx');
+  const ids = Object.keys(pacientesCache)
+    .filter(id => {
+      if(!filtro) return true;
+      const pac = pacientesCache[id];
+      const dx = dxCache[id];
+      const enNombre = (pac.nombre||'').toLowerCase().includes(filtro);
+      const enCodigo = dx && dx.dxBase && dx.dxBase.some(d => (d.codigo||'').toLowerCase().includes(filtro) || (d.descripcion||'').toLowerCase().includes(filtro));
+      return enNombre || enCodigo;
+    })
+    .sort((a,b) => (pacientesCache[a].nombre||'').localeCompare(pacientesCache[b].nombre||''));
+
+  if(ids.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay pacientes que coincidan.</div>';
+    return;
+  }
+  cont.innerHTML = ids.map(id => {
+    const pac = pacientesCache[id];
+    const dx = dxCache[id];
+    const base = dx && dx.dxBase ? dx.dxBase : [];
+    const activos = base.filter(d => d.estado === 'activo');
+    let sub = 'Sin diagnóstico registrado';
+    if(base.length > 0){
+      sub = activos.length > 0
+        ? activos.map(d => `${d.codigo} — ${d.descripcion}`).join(' · ')
+        : `${base[base.length-1].codigo} — ${base[base.length-1].descripcion} (${estadoLbl(base[base.length-1].estado)})`;
+    }
+    return `<div class="dx-card" onclick="window._abrirFicha('${id}')">
+      <div class="dx-av" style="background:${pac.colorAv || '#4A7B6F'}">${iniciales(pac.nombre)}</div>
+      <div class="dx-info">
+        <div class="dx-nm">${pac.nombre || 'Paciente'}</div>
+        <div class="dx-sub">${sub}</div>
+      </div>
+      ${activos.length > 0 ? `<span class="badge b-activo">Activo</span>` : ''}
+    </div>`;
+  }).join('');
+}
+document.getElementById('lista-buscador').addEventListener('input', () => renderListaDx());
+function estadoLbl(e){ return { activo:'Activo', remision:'En remisión', resuelto:'Resuelto' }[e] || e; }
+
+/* ===== NAVEGACIÓN ENTRE VISTAS ===== */
+function showView(id){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+window._abrirFicha = async function(pacienteId){
+  pacienteActivoId = pacienteId;
+  await ensureDxDoc(pacienteId);
+  renderFicha(pacienteId);
+  renderSidebarPacientes(document.getElementById('sb-buscador').value);
+  showView('view-ficha');
+};
+document.getElementById('pf-volver').addEventListener('click', () => {
+  pacienteActivoId = null;
+  showView('view-lista');
+  renderSidebarPacientes(document.getElementById('sb-buscador').value);
+});
+
+/* ===== RENDER: FICHA DE PACIENTE ===== */
+function renderFicha(pacienteId){
+  const pac = pacientesCache[pacienteId];
+  if(!pac) return;
+  const dx = dxCache[pacienteId] || { dxBase: [], bitacora: [] };
+
+  document.getElementById('pf-av').textContent = iniciales(pac.nombre);
+  document.getElementById('pf-av').style.background = pac.colorAv || '#4A7B6F';
+  document.getElementById('pf-nm').textContent = pac.nombre || 'Paciente';
+  document.getElementById('pf-sub').textContent = pac.telefono || pac.correo || '—';
+
+  // Diagnóstico base
+  const contBase = document.getElementById('dxb-lista');
+  const base = [...(dx.dxBase||[])].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  if(base.length === 0){
+    contBase.innerHTML = '<div class="empty-state" style="padding:16px 0;">Sin diagnóstico registrado.</div>';
+  } else {
+    contBase.innerHTML = base.map(d => `
+      <div class="dxb-item">
+        <div class="dxb-hdr">
+          <div>
+            <span class="dxb-codigo">${d.codigo}</span>
+            <span class="dxb-sistema"> · ${d.sistema}</span>
+          </div>
+          <div class="dxb-actions">
+            <span class="icon-btn" title="Editar" onclick="window._editarDxBase('${d.id}')"><i class="ti ti-pencil"></i></span>
+            <span class="icon-btn del" title="Eliminar" onclick="window._eliminarDxBase('${d.id}')"><i class="ti ti-trash"></i></span>
+          </div>
+        </div>
+        <div class="dxb-desc">${d.descripcion || ''}</div>
+        <div class="dxb-fecha">
+          Desde ${d.fecha || '—'}
+          <span class="badge b-${d.estado}" style="margin-left:6px;">${estadoLbl(d.estado)}</span>
+          <span class="badge ${d.visiblePaciente ? 'b-visible' : 'b-oculto'}" style="margin-left:4px;">${d.visiblePaciente ? 'Visible al paciente' : 'Oculto'}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  // Bitácora
+  const contBit = document.getElementById('bitacora-lista');
+  const bitacora = [...(dx.bitacora||[])].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  if(bitacora.length === 0){
+    contBit.innerHTML = '<div class="empty-state" style="padding:16px 0;">Sin entradas aún.</div>';
+  } else {
+    contBit.innerHTML = bitacora.map(b => `
+      <div class="tl-item">
+        <div class="tl-dot"></div>
+        <div class="tl-hdr">
+          <div class="tl-dt">${b.fecha}
+            <span class="badge ${b.visiblePaciente ? 'b-visible' : 'b-oculto'}" style="margin-left:4px;">${b.visiblePaciente ? 'Visible' : 'Oculto'}</span>
+          </div>
+          <div class="tl-actions">
+            <span class="icon-btn" title="Editar" onclick="window._editarBitacora('${b.id}')"><i class="ti ti-pencil"></i></span>
+            <span class="icon-btn del" title="Eliminar" onclick="window._eliminarBitacora('${b.id}')"><i class="ti ti-trash"></i></span>
+          </div>
+        </div>
+        <div class="tl-nt">${b.nota}</div>
+      </div>`).join('');
+  }
+}
+
+/* ===== MODAL: DIAGNÓSTICO BASE ===== */
+const dxbOverlay = document.getElementById('dxb-modal-overlay');
+let dxbEditingId = null;
+
+function abrirDxbModal(dxId){
+  dxbEditingId = dxId || null;
+  document.getElementById('dxb-modal-err').textContent = '';
+  const dx = dxCache[pacienteActivoId] || { dxBase: [] };
+  const item = dxId ? dx.dxBase.find(d => d.id === dxId) : null;
+
+  document.getElementById('dxb-modal-title').textContent = item ? 'Editar diagnóstico' : 'Nuevo diagnóstico';
+  document.getElementById('dxb-sistema').value = item ? item.sistema : 'CIE-10';
+  document.getElementById('dxb-codigo').value = item ? item.codigo : '';
+  document.getElementById('dxb-desc').value = item ? item.descripcion : '';
+  document.getElementById('dxb-fecha').value = item ? item.fecha : new Date().toISOString().slice(0,10);
+  document.getElementById('dxb-estado').value = item ? item.estado : 'activo';
+  document.getElementById('dxb-visible').checked = item ? !!item.visiblePaciente : false;
+  document.getElementById('dxb-suggest').classList.remove('show');
+  dxbOverlay.style.display = 'flex';
+}
+document.getElementById('btn-nuevo-dxbase').addEventListener('click', () => abrirDxbModal(null));
+document.getElementById('dxb-modal-close').addEventListener('click', () => dxbOverlay.style.display = 'none');
+document.getElementById('dxb-modal-cancel').addEventListener('click', () => dxbOverlay.style.display = 'none');
+window._editarDxBase = (id) => abrirDxbModal(id);
+
+/* Autocompletar de códigos comunes (texto libre, esto solo agiliza) */
+const dxbCodigoInput = document.getElementById('dxb-codigo');
+const dxbSuggest = document.getElementById('dxb-suggest');
+dxbCodigoInput.addEventListener('input', () => {
+  const val = dxbCodigoInput.value.trim().toLowerCase();
+  const sistema = document.getElementById('dxb-sistema').value;
+  if(val.length < 1){ dxbSuggest.classList.remove('show'); return; }
+  const matches = CODIGOS_COMUNES.filter(c => c.sistema === sistema &&
+    (c.codigo.toLowerCase().includes(val) || c.desc.toLowerCase().includes(val))).slice(0,6);
+  if(matches.length === 0){ dxbSuggest.classList.remove('show'); return; }
+  dxbSuggest.innerHTML = matches.map(c => `<div class="dx-suggest-item" data-codigo="${c.codigo}" data-desc="${c.desc.replace(/"/g,'&quot;')}"><b>${c.codigo}</b> — ${c.desc}</div>`).join('');
+  dxbSuggest.classList.add('show');
+});
+dxbSuggest.addEventListener('click', (e) => {
+  const item = e.target.closest('.dx-suggest-item');
+  if(!item) return;
+  dxbCodigoInput.value = item.dataset.codigo;
+  document.getElementById('dxb-desc').value = item.dataset.desc;
+  dxbSuggest.classList.remove('show');
+});
+document.getElementById('dxb-sistema').addEventListener('change', () => { dxbSuggest.classList.remove('show'); });
+
+document.getElementById('dxb-modal-save').addEventListener('click', async () => {
+  const errEl = document.getElementById('dxb-modal-err');
+  errEl.textContent = '';
+  const sistema = document.getElementById('dxb-sistema').value;
+  const codigo = document.getElementById('dxb-codigo').value.trim();
+  const descripcion = document.getElementById('dxb-desc').value.trim();
+  const fecha = document.getElementById('dxb-fecha').value;
+  const estado = document.getElementById('dxb-estado').value;
+  const visiblePaciente = document.getElementById('dxb-visible').checked;
+
+  if(!codigo){ errEl.textContent = 'Ingresa un código diagnóstico.'; return; }
+  if(!descripcion){ errEl.textContent = 'Ingresa una descripción.'; return; }
+  if(!fecha){ errEl.textContent = 'Selecciona la fecha de inicio.'; return; }
+
+  try{
+    const dx = await ensureDxDoc(pacienteActivoId);
+    let base = [...(dx.dxBase||[])];
+    if(dxbEditingId){
+      base = base.map(d => d.id === dxbEditingId ? { ...d, sistema, codigo, descripcion, fecha, estado, visiblePaciente } : d);
+    } else {
+      base.push({ id: uid(), sistema, codigo, descripcion, fecha, estado, visiblePaciente });
+    }
+    await updateDoc(doc(db, 'diagnosticos', pacienteActivoId), { dxBase: base });
+    showToast('Diagnóstico guardado.', 'ok');
+    dxbOverlay.style.display = 'none';
+  } catch(err){
+    console.error(err);
+    errEl.textContent = 'No pudimos guardar. Intenta de nuevo.';
+  }
+});
+window._eliminarDxBase = async function(id){
+  if(!confirm('¿Eliminar este diagnóstico? Esta acción no se puede deshacer.')) return;
+  try{
+    const dx = await ensureDxDoc(pacienteActivoId);
+    const base = (dx.dxBase||[]).filter(d => d.id !== id);
+    await updateDoc(doc(db, 'diagnosticos', pacienteActivoId), { dxBase: base });
+    showToast('Diagnóstico eliminado.', 'ok');
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos eliminar el registro.', 'err');
+  }
+};
+
+/* ===== MODAL: BITÁCORA DE EVOLUCIÓN ===== */
+const bitOverlay = document.getElementById('bit-modal-overlay');
+let bitEditingId = null;
+
+function abrirBitModal(bitId){
+  bitEditingId = bitId || null;
+  document.getElementById('bit-modal-err').textContent = '';
+  const dx = dxCache[pacienteActivoId] || { bitacora: [] };
+  const item = bitId ? dx.bitacora.find(b => b.id === bitId) : null;
+
+  document.getElementById('bit-modal-title').textContent = item ? 'Editar entrada' : 'Nueva entrada';
+  document.getElementById('bit-fecha').value = item ? item.fecha : new Date().toISOString().slice(0,10);
+  document.getElementById('bit-nota').value = item ? item.nota : '';
+  document.getElementById('bit-visible').checked = item ? !!item.visiblePaciente : false;
+  bitOverlay.style.display = 'flex';
+}
+document.getElementById('btn-nueva-entrada').addEventListener('click', () => abrirBitModal(null));
+document.getElementById('bit-modal-close').addEventListener('click', () => bitOverlay.style.display = 'none');
+document.getElementById('bit-modal-cancel').addEventListener('click', () => bitOverlay.style.display = 'none');
+window._editarBitacora = (id) => abrirBitModal(id);
+
+document.getElementById('bit-modal-save').addEventListener('click', async () => {
+  const errEl = document.getElementById('bit-modal-err');
+  errEl.textContent = '';
+  const fecha = document.getElementById('bit-fecha').value;
+  const nota = document.getElementById('bit-nota').value.trim();
+  const visiblePaciente = document.getElementById('bit-visible').checked;
+
+  if(!fecha){ errEl.textContent = 'Selecciona la fecha.'; return; }
+  if(!nota){ errEl.textContent = 'Escribe la nota de evolución.'; return; }
+
+  try{
+    const dx = await ensureDxDoc(pacienteActivoId);
+    let bitacora = [...(dx.bitacora||[])];
+    if(bitEditingId){
+      bitacora = bitacora.map(b => b.id === bitEditingId ? { ...b, fecha, nota, visiblePaciente } : b);
+    } else {
+      bitacora.push({ id: uid(), fecha, nota, visiblePaciente });
+    }
+    await updateDoc(doc(db, 'diagnosticos', pacienteActivoId), { bitacora });
+    showToast('Entrada guardada.', 'ok');
+    bitOverlay.style.display = 'none';
+  } catch(err){
+    console.error(err);
+    errEl.textContent = 'No pudimos guardar. Intenta de nuevo.';
+  }
+});
+window._eliminarBitacora = async function(id){
+  if(!confirm('¿Eliminar esta entrada de bitácora? Esta acción no se puede deshacer.')) return;
+  try{
+    const dx = await ensureDxDoc(pacienteActivoId);
+    const bitacora = (dx.bitacora||[]).filter(b => b.id !== id);
+    await updateDoc(doc(db, 'diagnosticos', pacienteActivoId), { bitacora });
+    showToast('Entrada eliminada.', 'ok');
+  } catch(err){
+    console.error(err);
+    showToast('No pudimos eliminar el registro.', 'err');
+  }
+};
+
+</script>
+</body>
+</html>
