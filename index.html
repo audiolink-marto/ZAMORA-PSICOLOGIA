@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.9.14: modal "Equipo interno" (sidebar → perfil) para administrar la colección
-     equipoInterno (correos con acceso total), en soporte de las nuevas reglas de
-     seguridad de Firestore basadas en lista blanca por correo. -->
+<!-- V1.9.16: en móvil, el sidebar completo se oculta (por diseño), lo que hacía
+     desaparecer "Módulos" (Pagos/Diagnóstico/Portal) y "Equipo interno". Se agregó un
+     botón "···" en la topbar móvil que despliega un panel con esos mismos accesos. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -441,6 +441,7 @@ button, input{font-family:'Inter',sans-serif;}
   }
   .mobile-topbar .aname{font-size:15px; font-weight:600; color:#fff;}
   .mobile-topbar-actions{display:flex; gap:8px;}
+.mas-mobile-panel{display:none;}
   .main{padding-bottom:58px;}
   .mobile-bottomnav{
     display:flex; position:fixed; bottom:0; left:0; right:0; height:58px;
@@ -452,6 +453,18 @@ button, input{font-family:'Inter',sans-serif;}
   }
   .mobile-bottomnav .nav-item i{font-size:19px; width:auto;}
   .mobile-bottomnav .nav-item.active{background:transparent;}
+  .mas-mobile-panel{
+    display:none; position:fixed; top:52px; right:16px; z-index:41;
+    background:var(--sb); border-radius:10px; border:0.5px solid rgba(255,255,255,0.1);
+    padding:6px; min-width:200px; box-shadow:0 6px 20px rgba(0,0,0,0.25);
+  }
+  .mas-mobile-panel.show{display:block;}
+  .mas-mobile-item{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:7px;
+    color:var(--sb-txt); font-size:13.5px; cursor:pointer; text-decoration:none;
+  }
+  .mas-mobile-item:hover{background:rgba(255,255,255,0.06);}
+  .mas-mobile-item i{font-size:16px; color:var(--warm); width:18px; text-align:center;}
   .pf-grid{grid-template-columns:1fr;}
   .mhdr{padding:14px 16px 8px;}
   .sessions, .pf-body{padding:12px 16px;}
@@ -526,9 +539,16 @@ button, input{font-family:'Inter',sans-serif;}
   <div class="mobile-topbar">
     <div class="aname">PsicoGestión</div>
     <div class="mobile-topbar-actions">
+      <button class="theme-toggle" id="btn-mas-mobile" aria-label="Más opciones"><i class="ti ti-dots-vertical"></i></button>
       <button class="theme-toggle" id="theme-toggle-m" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
       <button class="theme-toggle" id="logout-btn-m" aria-label="Cerrar sesión"><i class="ti ti-logout"></i></button>
     </div>
+  </div>
+  <div class="mas-mobile-panel" id="mas-mobile-panel">
+    <a class="mas-mobile-item" href="pagos.html"><i class="ti ti-wallet"></i>Pagos</a>
+    <a class="mas-mobile-item" href="diagnostico.html"><i class="ti ti-stethoscope"></i>Diagnóstico</a>
+    <a class="mas-mobile-item" href="portal.html" target="_blank"><i class="ti ti-user-circle"></i>Portal (vista paciente)</a>
+    <div class="mas-mobile-item" id="btn-equipo-interno-mobile"><i class="ti ti-users-group"></i>Equipo interno</div>
   </div>
   <div class="app">
     <aside class="sb">
@@ -556,6 +576,10 @@ button, input{font-family:'Inter',sans-serif;}
         </a>
         <a class="nav-item-ext" href="diagnostico.html">
           <i class="ti ti-stethoscope"></i>Diagnóstico
+          <span class="ext-mark"><i class="ti ti-external-link"></i></span>
+        </a>
+        <a class="nav-item-ext" href="portal.html" target="_blank" title="Vista del paciente — solo para pruebas, los pacientes acceden con su propio enlace">
+          <i class="ti ti-user-circle"></i>Portal (vista paciente)
           <span class="ext-mark"><i class="ti ti-external-link"></i></span>
         </a>
       </div>
@@ -587,13 +611,13 @@ button, input{font-family:'Inter',sans-serif;}
             <div class="scard"><div class="snum" id="st-done" style="color:var(--done)">0</div><div class="slbl">Completadas</div></div>
           </div>
           <div class="agenda-tabs">
-            <div class="atab active" data-atab="dia">Día</div>
+            <div class="atab" data-atab="dia">Día</div>
             <div class="atab" data-atab="semana">Semana</div>
-            <div class="atab" data-atab="mes">Mes</div>
+            <div class="atab active" data-atab="mes">Mes</div>
           </div>
         </div>
 
-        <div class="agenda-subview active" id="agenda-sub-dia">
+        <div class="agenda-subview" id="agenda-sub-dia">
           <div class="sessions" id="sessions-list">
             <div class="empty-state">Cargando sesiones...</div>
           </div>
@@ -608,7 +632,7 @@ button, input{font-family:'Inter',sans-serif;}
           <div class="week-grid" id="week-grid"></div>
         </div>
 
-        <div class="agenda-subview" id="agenda-sub-mes">
+        <div class="agenda-subview active" id="agenda-sub-mes">
           <div class="amo-nav">
             <div class="amo-navbtn" id="amo-prev"><i class="ti ti-chevron-left"></i></div>
             <div class="amo-navlbl" id="amo-label">—</div>
@@ -2007,6 +2031,22 @@ document.getElementById('pf-portal-btn').addEventListener('click', async () => {
    Colección "equipoInterno", id de documento = correo. Solo cuentas ya listadas
    aquí pueden leer/escribir todo (según las reglas de Firestore). */
 const equipoOverlay = document.getElementById('equipo-modal-overlay');
+/* ===== PANEL "MÁS" MÓVIL (V1.9.16) ===== */
+const masPanel = document.getElementById('mas-mobile-panel');
+document.getElementById('btn-mas-mobile').addEventListener('click', (e) => {
+  e.stopPropagation();
+  masPanel.classList.toggle('show');
+});
+document.addEventListener('click', (e) => {
+  if(masPanel.classList.contains('show') && !masPanel.contains(e.target) && e.target.id !== 'btn-mas-mobile'){
+    masPanel.classList.remove('show');
+  }
+});
+document.getElementById('btn-equipo-interno-mobile').addEventListener('click', () => {
+  masPanel.classList.remove('show');
+  document.getElementById('btn-equipo-interno').click();
+});
+
 document.getElementById('btn-equipo-interno').addEventListener('click', () => {
   document.getElementById('equipo-modal-err').textContent = '';
   document.getElementById('equipo-nuevo-correo').value = '';
