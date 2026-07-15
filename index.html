@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Consultorio</title>
-<!-- V1.9.5: recordatorios — notificación del navegador + envío manual por correo al paciente (mailto, marca "Enviado") -->
+<!-- V1.9.7: checkbox de completar con texto visible ("Completar"/"Hecha") en vista Día -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -185,13 +185,18 @@ button, input{font-family:'Inter',sans-serif;}
 .empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
 
 /* ===== CHECK RÁPIDO "COMPLETADA" EN CARD (V1.9.4) ===== */
-.ses-check{flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; color:var(--muted); font-size:18px; transition:color .15s, transform .1s;}
-.ses-check:hover{color:var(--pri); transform:scale(1.08);}
+.ses-check{flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px;
+  cursor:pointer; color:var(--muted); font-size:20px; transition:color .15s, transform .1s; padding-top:2px;}
+.ses-check span{font-size:9.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
+.ses-check:hover{color:var(--pri); transform:scale(1.05);}
 .ses-check.checked{color:var(--pri);}
 .wk-check{position:absolute; top:6px; right:6px; width:18px; height:18px; display:flex; align-items:center; justify-content:center;
   cursor:pointer; color:var(--muted); font-size:14px;}
 .wk-check.checked{color:var(--pri);}
+.wk-remind{margin-top:4px; display:flex; align-items:center; gap:3px; font-size:9.5px; color:var(--muted); cursor:pointer;}
+.wk-remind:hover{color:var(--pri);}
+.wk-remind.sent{color:var(--pri); cursor:default;}
+.wk-remind i{font-size:11px;}
 .wk-card{position:relative; padding-right:24px;}
 
 /* ===== RECORDATORIOS (V1.9.5) ===== */
@@ -419,6 +424,20 @@ button, input{font-family:'Inter',sans-serif;}
   .month-cell{min-height:44px; padding:4px;}
   .month-dow{font-size:9px;}
   .awk-nav, .amo-nav{padding:10px 16px 0;}
+  /* Letra más grande en cards de sesión para móvil (V1.9.6) */
+  .thr{font-size:14px;}
+  .tdur{font-size:11.5px;}
+  .snm{font-size:15px;}
+  .stype{font-size:13px;}
+  .badge{font-size:11.5px; padding:4px 8px;}
+  .ses-remind-btn{font-size:11.5px; padding:4px 9px;}
+  .wk-hora{font-size:12.5px;}
+  .wk-nm{font-size:12.5px;}
+  .tl-dt{font-size:12.5px;}
+  .tl-nt{font-size:13.5px;}
+  .wk-remind{font-size:11px;}
+  .ses-check{font-size:22px;}
+  .ses-check span{font-size:10.5px;}
 }
 </style>
 </head>
@@ -1159,7 +1178,11 @@ document.getElementById('rm-enviar').addEventListener('click', async () => {
   const mensaje = document.getElementById('rm-mensaje').value;
   const asunto = encodeURIComponent('Recordatorio de tu próxima sesión');
   const cuerpo = encodeURIComponent(mensaje);
-  window.open(`mailto:${email}?subject=${asunto}&body=${cuerpo}`, '_blank');
+  // V1.9.6: abre Gmail (web) directamente, en vez de mailto: que depende de tener
+  // un cliente de escritorio configurado. Si el paciente/profesional usa otro proveedor,
+  // Gmail igual permite enviar a cualquier destinatario.
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${asunto}&body=${cuerpo}`;
+  window.open(gmailUrl, '_blank');
 
   try{
     await updateDoc(doc(db, 'sesiones', rmSesionId), {
@@ -1177,7 +1200,9 @@ document.getElementById('rm-enviar').addEventListener('click', async () => {
 
 /* ----- 2) Notificaciones del navegador (mientras la app está abierta) ----- */
 const NOTIF_MINUTOS_ANTES = 15;
-let notifActivas = localStorage.getItem('psicogestion_notif_v1') === 'on';
+// V1.9.6: ya no se recuerda "desactivado" entre sesiones — cada vez que abres la app
+// hay que activar de nuevo (por si la primera vez se le dio "no" sin querer).
+let notifActivas = false;
 const notifYaAvisadas = new Set();
 
 function applyNotifIcon(){
@@ -1191,6 +1216,10 @@ document.getElementById('notif-toggle').addEventListener('click', async () => {
     return;
   }
   if(!notifActivas){
+    if(Notification.permission === 'denied'){
+      showToast('El navegador tiene las notificaciones bloqueadas para este sitio. Actívalas en la configuración del navegador (candado junto a la URL) y vuelve a intentar.', 'warn');
+      return;
+    }
     const permiso = await Notification.requestPermission();
     if(permiso !== 'granted'){
       showToast('No se activaron: permiso denegado en el navegador.', 'warn');
@@ -1202,7 +1231,6 @@ document.getElementById('notif-toggle').addEventListener('click', async () => {
     notifActivas = false;
     showToast('Recordatorios del navegador desactivados.', 'ok');
   }
-  localStorage.setItem('psicogestion_notif_v1', notifActivas ? 'on' : 'off');
   applyNotifIcon();
 });
 
@@ -1286,6 +1314,7 @@ function renderSessions(){
       </div>
       <div class="ses-check ${completada?'checked':''}" data-sid="${s.id}" data-estado="${s.estado||'upcoming'}" title="${completada?'Marcar como pendiente':'Marcar como completada'}">
         <i class="ti ${completada?'ti-circle-check-filled':'ti-circle'}"></i>
+        <span>${completada?'Hecha':'Completar'}</span>
       </div>
     </div>`;
   }).join('');
@@ -1372,6 +1401,9 @@ function renderWeekView(){
             </div>
             <div class="wk-hora">${s.hora||'--:--'}${enChoque?' <i class="ti ti-alert-triangle" style="color:var(--danger);font-size:10px"></i>':''}</div>
             <div class="wk-nm">${paciente.nombre || 'Paciente'}</div>
+            <div class="wk-remind ${s.recordatorioEnviado?'sent':''}" data-sid="${s.id}" data-pid="${s.pacienteId}" title="${s.recordatorioEnviado?'Recordatorio enviado':'Enviar recordatorio'}">
+              <i class="ti ${s.recordatorioEnviado?'ti-circle-check':'ti-mail'}"></i>
+            </div>
           </div>`;
         }).join('')
       : '<div class="wk-empty">Sin sesiones</div>';
@@ -1388,6 +1420,13 @@ function renderWeekView(){
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       toggleEstadoSesion(el.dataset.sid, el.dataset.estado);
+    });
+  });
+  gridEl.querySelectorAll('.wk-remind').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(el.classList.contains('sent')) return;
+      abrirModalRecordatorio(el.dataset.sid, el.dataset.pid);
     });
   });
 }
