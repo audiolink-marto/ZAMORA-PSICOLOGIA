@@ -26,7 +26,63 @@
      utilidad de verificación, y quedaba confuso ahí junto a Pagos/Diagnóstico.
      Se agrega en su lugar un enlace discreto "Abrir portal.html (login manual,
      sin vista previa)" dentro del modal "Portal de pacientes", donde ya vive
-     la vista previa real por paciente. -->
+     la vista previa real por paciente.
+     V1.9.22: se reemplaza el fondo animado del login (antes cuadrícula de
+     puntos parpadeantes) por una red de neuronas conectadas por sinapsis que
+     disparan un pulso, acorde a la temática del consultorio de psicología.
+     Mismo peso aproximado (SVG generado por JS, sin librerías externas).
+     V1.9.23: se estiliza más el fondo de neuronas — mayor opacidad general,
+     glow (drop-shadow) en nodos y líneas, más nodos/conexiones (55 nodos,
+     3 vecinos c/u) y radios/grosores mayores, para que se note más sin dejar
+     de ser sutil.
+     V1.9.24: fix — el viewBox era cuadrado (400x400) con preserveAspectRatio
+     "none" sobre un contenedor rectangular, lo que estiraba todo horizontal-
+     mente y ovalaba los nodos. Ahora el viewBox usa el ancho/alto reales del
+     contenedor (getBoundingClientRect), sin necesidad de forzar el estiramiento.
+     V1.9.25: se agrega un destello eléctrico (chispa blanca con glow del color
+     del nodo) en cada nodo, con timing brusco e irregular (cubic-bezier + delays
+     aleatorios, independiente de la respiración suave), simulando la descarga
+     eléctrica real en los puntos de contacto/sinapsis.
+     V1.9.26: se agrega un sistema de tutorial interactivo (spotlight tour),
+     adaptado del patrón usado en Sagrada Delicia — overlay con anillo que
+     resalta cada elemento, tarjeta con progreso/navegación, se guarda en
+     localStorage para no repetirse solo, y botón "🎓 Guía" en el sidebar
+     para relanzarlo cuando quieras. Se agregó id="sb-modulos" al contenedor
+     de Pagos/Diagnóstico (antes sin id) para poder resaltarlo en el tour.
+     Se lanza automáticamente 900ms después del primer login exitoso.
+     V1.9.27: fix — los botones Siguiente/Anterior/Saltar y el botón 🎓 Guía
+     no funcionaban porque usan onclick="" inline, pero sus funciones viven
+     dentro de <script type="module">, que no expone nada al scope global
+     por defecto. Se agregó window.iniciarTutorial/tutorialSiguiente/
+     tutorialAnterior/tutorialSaltar al final del bloque para exponerlas.
+     V1.9.28: fix — el botón 🎓 Guía no combinaba con el sidebar oscuro (colores
+     claros de --pri-lt sobre fondo oscuro) y su altura distinta a los demás
+     toggles hacía que se montara encima. Se restilizó para verse como los
+     otros botones del sidebar (transparente, borde tenue, 28px de alto). Además
+     no existía en móvil (sb-logo está oculto ahí); se agregó como ítem
+     "Guía interactiva" en el panel "···". Nota: los pasos que resaltan
+     elementos del sidebar (.sb-nav, #sb-modulos, etc.) no se verán bien en
+     móvil porque esos elementos están ocultos ahí — el tour sigue pensado
+     para escritorio; en móvil solo da acceso al botón.
+     V1.9.29: se crea un segundo set de pasos específico para móvil
+     (_TUT_PASOS_MOBILE), con targets propios de esa vista (.mobile-bottomnav,
+     #btn-mas-mobile, #theme-toggle-m) en vez de reusar los del sidebar de
+     escritorio. iniciarTutorial() elige automáticamente el set según el ancho
+     de pantalla (768px) al momento de lanzarse. El cálculo de posición del
+     spotlight ahora usa card.offsetWidth/Height en vez de valores fijos
+     320x272, para ajustarse bien al tamaño real de la tarjeta en pantallas
+     pequeñas.
+     V1.9.30: fix — el sidebar mide 230px y el botón "🎓 Guía" con texto no
+     cabía junto a los otros dos toggles (notificaciones, tema), empujando o
+     tapando el de tema. Se convirtió a solo-ícono (🎓), reusando la clase
+     .theme-toggle para que mida exactamente lo mismo que sus vecinos y quepan
+     los tres sin problema. El acceso en el panel móvil "···" no cambió.
+     V1.9.31: fix — la vista "Mes" de la agenda venía marcada como activa por
+     defecto en el HTML, pero el calendario quedaba vacío hasta el primer clic
+     en una pestaña, porque iniciarHistorialSiHaceFalta() (que carga el
+     historial completo y dispara renderMonthView()) solo se llamaba desde los
+     clics de pestaña/nav, nunca al iniciar sesión. Se agregó la llamada al
+     final de startListeners(), justo tras el login. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -85,22 +141,47 @@ button, input{font-family:'Inter',sans-serif;}
   min-height:100vh; display:flex; align-items:center; justify-content:center;
   background:var(--pg); padding:20px; position:relative; overflow:hidden;
 }
-/* ===== FONDO ANIMADO DEL LOGIN (V1.9.11) =====
-   Inspirado en el efecto de "bead-grid" de Liro Miyuki, adaptado a la paleta
-   propia de PsicoGestión (verde salvia / dorado) en vez de colores vivos —
-   un detalle sutil y calmado, apropiado para un consultorio. */
+/* ===== FONDO ANIMADO DEL LOGIN — RED DE NEURONAS (V1.9.23) =====
+   Antes era una cuadrícula de puntos parpadeantes (bead-grid); ahora es una
+   red de nodos conectados por líneas que "disparan" un pulso con glow, como
+   sinapsis, acorde a la temática del consultorio. Sigue usando variables CSS
+   del tema (var(--pri), var(--warm)) para adaptarse solo entre claro/oscuro.
+   SVG generado por JS, sin librerías externas. */
 .login-bg-shimmer{
-  position:absolute; inset:0; display:grid; grid-template-columns:repeat(16, 1fr);
-  gap:5px; padding:5px; z-index:0; opacity:0.16; pointer-events:none;
+  position:absolute; inset:0; z-index:0; opacity:0.42; pointer-events:none;
 }
-.shimmer-dot{
-  border-radius:50%; aspect-ratio:1;
-  animation:shimmerPg var(--d, 3s) ease-in-out infinite;
-  animation-delay:var(--delay, 0s);
+.login-bg-shimmer svg{width:100%; height:100%; display:block;}
+.neuron-node{
+  animation:neuronPulse var(--d, 3s) ease-in-out infinite;
+  animation-delay:var(--delay, 0s); transform-origin:center;
+  transform-box:fill-box; filter:drop-shadow(0 0 3px currentColor);
 }
-@keyframes shimmerPg{
-  0%,100%{opacity:.2; transform:scale(.8);}
-  50%{opacity:1; transform:scale(1);}
+.neuron-line{
+  stroke-dasharray:var(--len) var(--len); stroke-dashoffset:var(--len);
+  animation:neuronFire var(--fd, 4s) ease-in-out infinite;
+  animation-delay:var(--fdelay, 0s);
+  filter:drop-shadow(0 0 2px currentColor);
+}
+@keyframes neuronPulse{
+  0%,100%{opacity:.3; transform:scale(.7);}
+  50%{opacity:1; transform:scale(1.35);}
+}
+.neuron-spark{
+  fill:#fff; transform-origin:center; transform-box:fill-box;
+  animation:sparkFlash var(--sd, 3.5s) cubic-bezier(.16,1,.3,1) infinite;
+  animation-delay:var(--sdelay, 0s);
+}
+@keyframes sparkFlash{
+  0%,86%,100%{opacity:0; transform:scale(.2);}
+  90%{opacity:1; transform:scale(2.4);}
+  94%{opacity:.5; transform:scale(1.5);}
+  97%{opacity:0; transform:scale(.6);}
+}
+@keyframes neuronFire{
+  0%{stroke-dashoffset:var(--len); opacity:0;}
+  30%{opacity:1;}
+  70%{opacity:1;}
+  100%{stroke-dashoffset:0; opacity:0;}
 }
 .login-card{position:relative; z-index:1;
   width:100%; max-width:360px; background:var(--crd);
@@ -519,9 +600,54 @@ button, input{font-family:'Inter',sans-serif;}
   .ses-check{font-size:23px;}
   .ses-check span{font-size:11.5px;}
 }
+
+/* ══ TUTORIAL SYSTEM (V1.9.26) — adaptado del patrón usado en Sagrada Delicia ══ */
+#tutorial-overlay{position:fixed; inset:0; z-index:9990; background:rgba(10,14,20,0.72); pointer-events:all; transition:opacity .3s;}
+#tutorial-overlay.oculto{display:none !important;}
+#tutorial-spotlight-ring{position:fixed; z-index:9995; border-radius:12px; box-shadow:0 0 0 3px var(--pri),0 0 0 7px rgba(74,123,111,0.18),0 0 28px rgba(74,123,111,0.16); pointer-events:none; transition:top .35s cubic-bezier(.4,0,.2,1),left .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1);}
+#tutorial-card{position:fixed; z-index:10000; background:var(--crd); border:1px solid var(--pri); border-radius:14px; padding:22px 22px 16px; width:316px; box-shadow:0 20px 60px rgba(0,0,0,.45),0 0 0 1px rgba(74,123,111,0.08);}
+#tutorial-card.animando{animation:tut-fade .26s ease;}
+@keyframes tut-fade{from{opacity:0; transform:translateY(7px);} to{opacity:1; transform:translateY(0);}}
+.tut-progress-bar{display:flex; gap:3px; margin-bottom:16px;}
+.tut-pip{flex:1; height:3px; border-radius:3px; background:var(--brd); transition:background .3s;}
+.tut-pip.activo{background:var(--pri);}
+.tut-pip.hecho{background:rgba(74,123,111,0.4);}
+#tutorial-emoji{font-size:1.55rem; margin-bottom:8px; line-height:1;}
+#tutorial-titulo{color:var(--txt); font-size:.98rem; font-weight:700; margin-bottom:9px;}
+#tutorial-texto{color:var(--txt); opacity:.85; font-size:.81rem; line-height:1.65; margin-bottom:16px;}
+.tut-nav-row{display:flex; gap:6px; align-items:center; justify-content:space-between;}
+.tut-step-label{font-size:.67rem; color:var(--muted); font-weight:600; white-space:nowrap;}
+.btn-tut-ant{background:none; border:1px solid var(--brd); color:var(--muted); padding:7px 11px; border-radius:8px; font-size:.76rem; cursor:pointer; transition:all .18s;}
+.btn-tut-ant:hover{border-color:var(--pri); color:var(--pri);}
+.btn-tut-sig{background:var(--pri); color:#fff; border:none; padding:7px 14px; border-radius:8px; font-size:.76rem; font-weight:700; cursor:pointer; transition:all .18s; white-space:nowrap;}
+.btn-tut-sig:hover{filter:brightness(1.1); transform:translateY(-1px);}
+.btn-tut-saltar{background:none; border:none; color:var(--muted); font-size:.7rem; cursor:pointer; padding:4px 5px; transition:color .18s;}
+.btn-tut-saltar:hover{color:var(--danger);}
+.btn-guia{font-size:14px;}
+.mas-mobile-item.btn-guia-mobile{color:var(--pri);}
+@media (max-width:600px){
+  #tutorial-card{width:88vw; max-width:316px;}
+}
 </style>
 </head>
 <body>
+
+<!-- ══ TUTORIAL OVERLAY (V1.9.26) ══ -->
+<div id="tutorial-overlay" class="oculto">
+    <div id="tutorial-spotlight-ring" style="display:none;"></div>
+    <div id="tutorial-card">
+        <div class="tut-progress-bar" id="tut-progress-bar"></div>
+        <div id="tutorial-emoji"></div>
+        <div id="tutorial-titulo"></div>
+        <p id="tutorial-texto"></p>
+        <div class="tut-nav-row">
+            <button class="btn-tut-ant" id="btn-tut-ant" onclick="tutorialAnterior()">← Ant.</button>
+            <span class="tut-step-label" id="tut-step-label"></span>
+            <button class="btn-tut-saltar" onclick="tutorialSaltar()">✕ Saltar</button>
+            <button class="btn-tut-sig" id="btn-tut-sig" onclick="tutorialSiguiente()">Siguiente →</button>
+        </div>
+    </div>
+</div>
 
 <!-- ===== LOGIN ===== -->
 <div id="login-screen">
@@ -574,6 +700,7 @@ button, input{font-family:'Inter',sans-serif;}
     </div>
   </div>
   <div class="mas-mobile-panel" id="mas-mobile-panel">
+    <div class="mas-mobile-item btn-guia-mobile" onclick="iniciarTutorial(true)"><i class="ti ti-school"></i>Guía interactiva</div>
     <a class="mas-mobile-item" href="pagos.html"><i class="ti ti-wallet"></i>Pagos</a>
     <a class="mas-mobile-item" href="diagnostico.html"><i class="ti ti-stethoscope"></i>Diagnóstico</a>
     <div class="mas-mobile-item" id="btn-equipo-interno-mobile"><i class="ti ti-users-group"></i>Equipo interno</div>
@@ -587,6 +714,7 @@ button, input{font-family:'Inter',sans-serif;}
           <div class="asub">Consultorio privado</div>
         </div>
         <div style="display:flex; gap:6px;">
+          <button class="theme-toggle btn-guia" onclick="iniciarTutorial(true)" title="Relanzar guía interactiva" aria-label="Guía interactiva">🎓</button>
           <button class="theme-toggle" id="notif-toggle" aria-label="Activar recordatorios" title="Activar recordatorios del navegador"><i class="ti ti-bell"></i></button>
           <button class="theme-toggle" id="theme-toggle" aria-label="Cambiar tema"><i class="ti ti-moon"></i></button>
         </div>
@@ -597,7 +725,7 @@ button, input{font-family:'Inter',sans-serif;}
         <div class="nav-item" data-view="sesiones"><i class="ti ti-notes"></i>Sesiones</div>
         <div class="nav-item" data-view="reportes"><i class="ti ti-chart-bar"></i>Reportes</div>
       </div>
-      <div style="padding:10px 8px 0;">
+      <div id="sb-modulos" style="padding:10px 8px 0;">
         <div class="sb-lbl" style="padding-left:2px;">Módulos</div>
         <a class="nav-item-ext" href="pagos.html">
           <i class="ti ti-wallet"></i>Pagos
@@ -1027,21 +1155,46 @@ const firebaseConfig = {
   messagingSenderId: "1018710047961",
   appId: "1:1018710047961:web:bc619e40b828d35347d2c8"
 };
-/* ===== FONDO ANIMADO DEL LOGIN (V1.9.11) =====
-   Usa variables CSS del tema (var(--pri), etc.) en vez de colores fijos,
-   así se adapta solo al cambiar entre claro/oscuro. */
+/* ===== FONDO ANIMADO DEL LOGIN — RED DE NEURONAS (V1.9.23) =====
+   Genera un SVG con nodos (neuronas) y líneas (sinapsis) que se conectan a
+   sus vecinos más cercanos. Cada línea "dispara" un pulso animado en loop,
+   con glow (drop-shadow) para mayor presencia visual. Usa variables CSS del
+   tema en vez de colores fijos. */
 (function generarFondoLogin(){
   const cont = document.getElementById('login-bg-shimmer');
   if(!cont) return;
-  const colores = ['var(--pri)','var(--pri-on-sb)','var(--warm)','var(--muted)','var(--brd)'];
-  for(let i = 0; i < 160; i++){
-    const d = document.createElement('div');
-    d.className = 'shimmer-dot';
-    d.style.backgroundColor = colores[Math.floor(Math.random()*colores.length)];
-    d.style.setProperty('--d', (2 + Math.random()*3) + 's');
-    d.style.setProperty('--delay', (Math.random()*3) + 's');
-    cont.appendChild(d);
-  }
+  const rect = cont.getBoundingClientRect();
+  const W = Math.max(rect.width, 100), H = Math.max(rect.height, 100);
+  const N = 55;
+  const pts = Array.from({length:N}, () => ({x:Math.random()*W, y:Math.random()*H}));
+  const colores = ['var(--pri)','var(--warm)','var(--pri-on-sb)'];
+  let lineas = '', nodos = '';
+  pts.forEach((p,i) => {
+    const vecinos = pts
+      .map((q,j) => ({j, d: j===i ? Infinity : Math.hypot(p.x-q.x, p.y-q.y)}))
+      .sort((a,b) => a.d-b.d)
+      .slice(0,3);
+    vecinos.forEach(({j,d}) => {
+      if(j <= i) return; // evita duplicar la misma línea en ambos sentidos
+      const q = pts[j];
+      const fd = (2.5 + Math.random()*3).toFixed(2);
+      const fdelay = (Math.random()*4).toFixed(2);
+      const color = colores[Math.floor(Math.random()*colores.length)];
+      lineas += `<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}" class="neuron-line" stroke="${color}" stroke-width="0.9" style="--len:${d.toFixed(1)};--fd:${fd}s;--fdelay:${fdelay}s;color:${color};"/>`;
+    });
+  });
+  pts.forEach(p => {
+    const d = (2 + Math.random()*3).toFixed(2);
+    const delay = (Math.random()*3).toFixed(2);
+    const r = (1.8 + Math.random()*1.8).toFixed(2);
+    const color = colores[Math.floor(Math.random()*colores.length)];
+    nodos += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${color}" class="neuron-node" style="--d:${d}s;--delay:${delay}s;color:${color};"/>`;
+    const sd = (2.5 + Math.random()*3.5).toFixed(2);
+    const sdelay = (Math.random()*5).toFixed(2);
+    const rSpark = (Number(r) * 0.6).toFixed(2);
+    nodos += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rSpark}" class="neuron-spark" style="--sd:${sd}s;--sdelay:${sdelay}s;filter:drop-shadow(0 0 4px ${color}) drop-shadow(0 0 9px ${color});"/>`;
+  });
+  cont.innerHTML = `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}">${lineas}${nodos}</svg>`;
 })();
 
 const app = initializeApp(firebaseConfig);
@@ -1189,6 +1342,7 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById('prof-nm').textContent = user.email;
     document.getElementById('prof-av').textContent = (user.email||'??').slice(0,2).toUpperCase();
     startListeners();
+    setTimeout(() => iniciarTutorial(false), 900);
   } else {
     loginScreen.style.display = 'flex';
     appScreen.style.display = 'none';
@@ -1260,6 +1414,12 @@ function startListeners(){
   // V1.9.8: se deja de cargar siempre desde el login. Se activa la primera vez que
   // hace falta, con iniciarHistorialSiHaceFalta(). Así el login/agenda del día,
   // que es lo que más se usa, no descarga años de historial que no necesita.
+  // V1.9.31: la vista Mes ya viene activa por defecto en el HTML, pero antes
+  // nadie disparaba iniciarHistorialSiHaceFalta() hasta el primer clic en una
+  // pestaña — por eso el calendario aparecía vacío al entrar. Se llama aquí
+  // mismo tras el login; la función ya revisa sola si "Mes" está activo y
+  // pinta el calendario sin necesidad de hacer clic.
+  iniciarHistorialSiHaceFalta();
 }
 
 /* ===== HISTORIAL COMPLETO: CARGA DIFERIDA (LAZY) — V1.9.8 =====
@@ -2825,6 +2985,144 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async ()
     errEl.textContent = 'No pudimos eliminar. Intenta de nuevo.';
   }
 });
+
+/* ══════════════════════════════════════════════════
+   TUTORIAL SYSTEM (V1.9.26) — adaptado del patrón de Sagrada Delicia
+   V1.9.29: se separan los pasos en dos sets (escritorio/móvil), cada uno
+   apuntando a elementos que realmente existen y son visibles en esa vista.
+   ══════════════════════════════════════════════════ */
+const _TUT_LLAVE = 'psicogestion_tutorial_v1';
+const _TUT_BREAKPOINT = 768;
+let _tutPaso = 0;
+let _tutPasosActivos = [];
+
+const _TUT_PASOS_DESKTOP = [
+  { target: null, emoji:'🎉', titulo:'¡Bienvenido a PsicoGestión!', texto:'Este es el panel de tu consultorio: aquí gestionas pacientes, sesiones, pagos y diagnóstico. Puedes saltar esta guía y relanzarla luego con el botón 🎓 Guía.' },
+  { target:'.sb-nav', emoji:'🗂️', titulo:'Navegación principal', texto:'Agenda muestra tu semana/mes de un vistazo. Pacientes es tu directorio completo. Sesiones lista todo históricamente. Reportes te da estadísticas y el PDF exportable del consultorio.' },
+  { target:'#sb-modulos', emoji:'🧩', titulo:'Módulos del ecosistema', texto:'Pagos y Diagnóstico son aplicaciones separadas (archivos propios) que comparten los mismos pacientes y se abren en pestaña nueva. Todo lo que registres ahí se refleja en el portal del paciente.' },
+  { target:'#sb-buscador', emoji:'🔍', titulo:'Buscador rápido', texto:'Filtra tu lista de pacientes activos escribiendo el nombre. Atajo de teclado: presiona "/" en cualquier momento para saltar directo aquí.' },
+  { target:'#sb-pacientes-list', emoji:'👥', titulo:'Pacientes activos', texto:'Tu lista rápida de acceso. Haz clic en cualquiera para abrir su ficha completa: sesiones, pagos, diagnóstico y accesos al portal, todo en un solo lugar.' },
+  { target:'#btn-portal-pacientes', emoji:'🔐', titulo:'Portal de pacientes', texto:'Desde aquí activas el acceso al portal para cada paciente, reenvías su correo de contraseña, revocas el acceso o abres una vista previa de lo que ellos ven — sin necesidad de sus credenciales.' },
+  { target:'#btn-equipo-interno', emoji:'👤', titulo:'Equipo interno', texto:'Si trabajas con colegas o asistentes, aquí gestionas quién más tiene acceso a este panel y qué puede ver o hacer.' },
+  { target:'#view-agenda', emoji:'📅', titulo:'Tu agenda', texto:'La vista principal al iniciar sesión. Cambia entre semana y mes, y cada sesión muestra su estado, modalidad y si hay algún choque de horario.' },
+  { target:'#notif-toggle', emoji:'🔔', titulo:'Recordatorios', texto:'Actívalos para recibir notificaciones del navegador antes de tus sesiones próximas — útil si sueles tener el panel abierto en segundo plano.' },
+  { target: null, emoji:'✅', titulo:'¡Listo para empezar!', texto:'Eso es todo por ahora. Si en algún momento quieres repasar esta guía, el botón 🎓 Guía siempre está disponible junto al ícono de notificaciones.' },
+];
+
+const _TUT_PASOS_MOBILE = [
+  { target: null, emoji:'🎉', titulo:'¡Bienvenido a PsicoGestión!', texto:'Este es el panel de tu consultorio, adaptado a tu celular. Puedes saltar esta guía y relanzarla luego desde el botón "···" de arriba.' },
+  { target:'.mobile-bottomnav', emoji:'🗂️', titulo:'Navegación principal', texto:'Agenda muestra tu semana/mes de un vistazo. Pacientes es tu directorio completo. Sesiones lista todo históricamente. Reportes te da estadísticas y el PDF exportable.' },
+  { target:'#btn-mas-mobile', emoji:'⋮', titulo:'Más opciones', texto:'Aquí están Pagos, Diagnóstico, Equipo interno, Portal de pacientes y esta misma guía — todo lo que en escritorio ves en el sidebar, agrupado en un solo panel.' },
+  { target:'#view-agenda', emoji:'📅', titulo:'Tu agenda', texto:'La vista principal al iniciar sesión. Cambia entre semana y mes, y cada sesión muestra su estado, modalidad y si hay algún choque de horario.' },
+  { target:'#theme-toggle-m', emoji:'🌙', titulo:'Modo claro / oscuro', texto:'Cambia el tema visual de toda la app con este botón, tanto en el panel principal como en Pagos y Diagnóstico.' },
+  { target: null, emoji:'✅', titulo:'¡Listo para empezar!', texto:'Eso es todo por ahora. Si en algún momento quieres repasar esta guía, la encuentras dentro del botón "···" como "Guía interactiva".' },
+];
+
+function iniciarTutorial(forzar = false) {
+  const visto = localStorage.getItem(_TUT_LLAVE);
+  if (visto && !forzar) return;
+  _tutPasosActivos = window.innerWidth <= _TUT_BREAKPOINT ? _TUT_PASOS_MOBILE : _TUT_PASOS_DESKTOP;
+  _tutPaso = 0;
+  document.getElementById('tutorial-overlay').classList.remove('oculto');
+  _renderTutPaso();
+}
+
+function _renderTutPaso() {
+  const paso  = _tutPasosActivos[_tutPaso];
+  const total = _tutPasosActivos.length;
+  const ring  = document.getElementById('tutorial-spotlight-ring');
+  const card  = document.getElementById('tutorial-card');
+
+  card.classList.remove('animando');
+  void card.offsetWidth;
+  card.classList.add('animando');
+
+  document.getElementById('tut-progress-bar').innerHTML =
+    _tutPasosActivos.map((_, i) =>
+      `<div class="tut-pip ${i < _tutPaso ? 'hecho' : i === _tutPaso ? 'activo' : ''}"></div>`
+    ).join('');
+
+  document.getElementById('tutorial-emoji').textContent  = paso.emoji;
+  document.getElementById('tutorial-titulo').textContent = paso.titulo;
+  document.getElementById('tutorial-texto').textContent  = paso.texto;
+  document.getElementById('tut-step-label').textContent  = `${_tutPaso + 1} / ${total}`;
+
+  document.getElementById('btn-tut-ant').style.visibility = _tutPaso === 0 ? 'hidden' : 'visible';
+  document.getElementById('btn-tut-sig').textContent = _tutPaso === total - 1 ? '✅ Finalizar' : 'Siguiente →';
+
+  if (paso.target) {
+    const el = document.querySelector(paso.target);
+    if (el) {
+      el.scrollIntoView({ behavior:'smooth', block:'center' });
+      setTimeout(() => _posicionarTutorial(el, card, ring), 400);
+    } else {
+      ring.style.display = 'none';
+      _centrarCard(card);
+    }
+  } else {
+    ring.style.display = 'none';
+    _centrarCard(card);
+  }
+}
+
+function _posicionarTutorial(el, card, ring) {
+  const rect  = el.getBoundingClientRect();
+  const pad   = 8;
+  const vp    = { w: window.innerWidth, h: window.innerHeight };
+  const cardW = card.offsetWidth  || 320;
+  const cardH = card.offsetHeight || 272;
+
+  ring.style.display = 'block';
+  ring.style.top     = (rect.top    - pad) + 'px';
+  ring.style.left    = (rect.left   - pad) + 'px';
+  ring.style.width   = (rect.width  + pad * 2) + 'px';
+  ring.style.height  = (rect.height + pad * 2) + 'px';
+
+  let top;
+  if (rect.bottom + cardH + 20 < vp.h)    top = rect.bottom + 16;
+  else if (rect.top - cardH - 16 > 0)     top = rect.top - cardH - 16;
+  else                                     top = Math.max(12, (vp.h - cardH) / 2);
+
+  let left = rect.left + (rect.width / 2) - (cardW / 2);
+  left = Math.max(12, Math.min(left, vp.w - cardW - 12));
+
+  card.style.top       = top  + 'px';
+  card.style.left      = left + 'px';
+  card.style.transform = 'none';
+}
+
+function _centrarCard(card) {
+  card.style.top       = '50%';
+  card.style.left      = '50%';
+  card.style.transform = 'translate(-50%, -50%)';
+}
+
+function tutorialSiguiente() {
+  if (_tutPaso >= _tutPasosActivos.length - 1) { terminarTutorial(); return; }
+  _tutPaso++;
+  _renderTutPaso();
+}
+
+function tutorialAnterior() {
+  if (_tutPaso > 0) { _tutPaso--; _renderTutPaso(); }
+}
+
+function tutorialSaltar() { terminarTutorial(); }
+
+function terminarTutorial() {
+  localStorage.setItem(_TUT_LLAVE, '1');
+  document.getElementById('tutorial-overlay').classList.add('oculto');
+  document.getElementById('tutorial-spotlight-ring').style.display = 'none';
+  showToast('🎓 Guía disponible en el botón del encabezado', 'ok');
+}
+
+// V1.9.27 fix: este script es type="module", así que las funciones no quedan
+// en el scope global por defecto — los onclick="" del HTML del tutorial
+// necesitan encontrarlas en window explícitamente.
+window.iniciarTutorial = iniciarTutorial;
+window.tutorialSiguiente = tutorialSiguiente;
+window.tutorialAnterior = tutorialAnterior;
+window.tutorialSaltar = tutorialSaltar;
 </script>
 </body>
 </html>
