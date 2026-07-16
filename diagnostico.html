@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PsicoGestión — Diagnóstico</title>
+<!-- V1.2: se agregan los créditos de diseño (Marto 🧠 · martowave@gmail.com) discretos
+     al pie del sidebar. No se tocó ninguna otra función ni estilo existente. -->
+<!-- V1.3: se agregan los mismos créditos también en la pantalla de login.
+     No se tocó ninguna otra función ni estilo existente. -->
+<!-- V1.4: se quita "Portal (vista paciente)" del panel móvil "···" — no era
+     un módulo de gestión, quedaba confuso ahí. El acceso manual al portal
+     ahora vive solo en el modal "Portal de pacientes" de index.html. -->
 <!-- V1.1: se agregó botón "···" en la topbar móvil con panel desplegable
      (Agenda / Pagos / Portal), mismo patrón que index.html y pagos.html.
      .mas-mobile-panel queda con display:none a nivel raíz para no repetir
@@ -274,6 +281,7 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
     </div>
     <button class="login-btn" id="login-btn">Iniciar sesión</button>
     <div class="login-err" id="login-err"></div>
+    <div style="font-size:10px; color:var(--muted); text-align:center; margin-top:18px; opacity:0.6;">Diseñado por: Marto 🧠 · martowave@gmail.com</div>
   </div>
 </div>
 
@@ -290,7 +298,6 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
   <div class="mas-mobile-panel" id="mas-mobile-panel">
     <a class="mas-mobile-item" href="index.html"><i class="ti ti-calendar-event"></i>Agenda</a>
     <a class="mas-mobile-item" href="pagos.html"><i class="ti ti-wallet"></i>Pagos</a>
-    <a class="mas-mobile-item" href="portal.html" target="_blank"><i class="ti ti-user-circle"></i>Portal (vista paciente)</a>
   </div>
   <div class="app">
     <aside class="sb">
@@ -314,9 +321,8 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
           <div class="prof-rl" id="logout-btn">Cerrar sesión</div>
         </div>
       </div>
-    </aside>
-
-    <main class="main">
+      <div style="font-size:10px; color:var(--sb-txt-dim); text-align:center; padding:10px 8px 4px;">Diseñado por: Marto 🧠 · martowave@gmail.com</div>
+    </aside>    <main class="main">
 
       <!-- ===== VISTA: LISTA GENERAL ===== -->
       <section class="view active" id="view-lista">

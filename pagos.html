@@ -7,7 +7,16 @@
 <!-- V1.1: agregado toggle "visiblePaciente" en el modal de pago, para conexión con portal.html
      V1.2: fix preventivo — .mas-mobile-panel ahora tiene display:none a nivel raíz
      (antes solo existía dentro del media query móvil, con riesgo de quedar visible en desktop,
-     igual al bug detectado en index.html V1.9.17). -->
+     igual al bug detectado en index.html V1.9.17).
+     V1.3: se agregan los créditos de diseño (Marto 🧠 · martowave@gmail.com) discretos
+     al pie del sidebar y en los dos PDFs generados (recibo individual y reporte
+     analítica). No se tocó ninguna otra función ni estilo existente.
+     V1.4: se agregan los mismos créditos también en la pantalla de login.
+     No se tocó ninguna otra función ni estilo existente.
+     V1.5: se quita "Portal (vista paciente)" del sidebar desktop y del panel
+     móvil "···" (Módulos) — no era un módulo de gestión, quedaba confuso ahí.
+     El acceso manual al portal ahora vive solo en el modal "Portal de
+     pacientes" de index.html. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
@@ -335,6 +344,7 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
     </div>
     <button class="login-btn" id="login-btn">Iniciar sesión</button>
     <div class="login-err" id="login-err"></div>
+    <div style="font-size:10px; color:var(--muted); text-align:center; margin-top:18px; opacity:0.6;">Diseñado por: Marto 🧠 · martowave@gmail.com</div>
   </div>
 </div>
 
@@ -351,7 +361,6 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
   <div class="mas-mobile-panel" id="mas-mobile-panel">
     <a class="mas-mobile-item" href="index.html"><i class="ti ti-calendar-event"></i>Agenda</a>
     <a class="mas-mobile-item" href="diagnostico.html"><i class="ti ti-stethoscope"></i>Diagnóstico</a>
-    <a class="mas-mobile-item" href="portal.html" target="_blank"><i class="ti ti-user-circle"></i>Portal (vista paciente)</a>
   </div>
   <div class="app">
     <aside class="sb">
@@ -374,7 +383,6 @@ button, input, select, textarea{font-family:'Inter',sans-serif;}
         <div class="sb-lbl" style="padding-left:2px;">Módulos</div>
         <a class="nav-item-ext" href="index.html"><i class="ti ti-calendar-event"></i>Agenda<span class="ext-mark"><i class="ti ti-external-link"></i></span></a>
         <a class="nav-item-ext" href="diagnostico.html"><i class="ti ti-stethoscope"></i>Diagnóstico<span class="ext-mark"><i class="ti ti-external-link"></i></span></a>
-        <a class="nav-item-ext" href="portal.html" target="_blank"><i class="ti ti-user-circle"></i>Portal<span class="ext-mark"><i class="ti ti-external-link"></i></span></a>
       </div>
       <div class="sb-flex"></div>
       <div class="sb-prof">
@@ -1350,6 +1358,7 @@ window._imprimirRecibo = function(pagoId){
   </div>
   <div class="monto-total">${money(p.monto)}</div>
   <p style="text-align:center;font-size:0.75rem;color:#94a3b8;margin-top:30px;">Recibo generado por PsicoGestión — ${fechaEmision}</p>
+  <p style="text-align:center;font-size:0.7rem;color:#B8874A;margin-top:4px;">Diseñado por: Marto 🧠 · martowave@gmail.com</p>
   </body></html>`;
 
   const win = window.open('', '_blank', 'width=700,height=800');
@@ -1388,6 +1397,7 @@ document.getElementById('btn-exportar-analitica').addEventListener('click', () =
     <div class="card"><div class="card-num">${pagosCache.length}</div><div class="card-lbl">Total de registros</div></div>
   </div>
   <p style="text-align:center;margin-top:40px;font-size:0.75rem;color:#94a3b8;">Documento generado por PsicoGestión — ${fecha}</p>
+  <p style="text-align:center;margin-top:4px;font-size:0.7rem;color:#B8874A;">Diseñado por: Marto 🧠 · martowave@gmail.com</p>
   </body></html>`;
 
   const win = window.open('', '_blank', 'width=900,height=800');
